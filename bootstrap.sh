@@ -6,3 +6,4 @@ rez pip -r --install requests
 rez pip -r --install git+https://github.com/shotgunsoftware/python-api.git
 (cd packages/notgun && rez build -i)
 (cd packages/notgun-launcher && rez build -i)
+(cd packages/notgun-nuke && rez build -i)
