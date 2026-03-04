@@ -34,7 +34,7 @@ def main() -> int:
             file=sys.stderr,
         )
         return 1
-
+    os.environ["QT_SCALE_FACTOR"] = "1.5"
     app = QApplication()
     app.setApplicationName("Notgun")
     app.setStyleSheet(_load_stylesheet())
