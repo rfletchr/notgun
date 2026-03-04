@@ -7,3 +7,11 @@ rez_install_files(
     DESTINATION .
     LOCAL_SYMLINK
 )
+
+file(GLOB_RECURSE python_files "src/*.py")
+rez_install_python(
+    py
+    ${python_files}
+    DESTINATION .
+    LOCAL_SYMLINK
+)
