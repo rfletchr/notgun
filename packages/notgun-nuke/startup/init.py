@@ -1,3 +1,4 @@
 import notgun.bootstrap
 
-notgun.bootstrap.init_from_env()
+pipeline = notgun.bootstrap.init_from_env()
+print("loaded project", pipeline)

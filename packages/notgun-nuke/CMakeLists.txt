@@ -4,6 +4,6 @@ include(RezBuild)
 file(GLOB startup_files "startup/*.py")
 rez_install_files(
     ${startup_files}
-    DESTINATION startup
+    DESTINATION .
     LOCAL_SYMLINK
 )
