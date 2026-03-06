@@ -1,4 +1,5 @@
 from __future__ import annotations
+from pathlib import Path
 import os
 import glob
 import re
@@ -94,6 +95,7 @@ class Token:
         """
         if self.placeholder is not None and value == self.placeholder:
             return str(value)
+
         return format(value, self.fmt)
 
     def parse(self, s: str) -> Any:
@@ -158,6 +160,7 @@ class Template:
         Raises:
             ValueError: If *s* does not fully match the template pattern.
         """
+
         return self.fullmatch(s)
 
     def match(self, s: str) -> dict[str, Any] | None:
@@ -208,12 +211,7 @@ class PathTemplate(Template):
             ValueError: If *s* is not an absolute path.
             ValueError: If *s* does not share the template root.
         """
-        if not os.path.isabs(s):
-            raise ValueError(f"Path {s!r} must be absolute")
-        rel = os.path.relpath(s, self._root)
-        if rel.startswith(".."):
-            raise ValueError(f"Path {s!r} is not under root {self._root!r}")
-        return super().parse(rel)
+        return self.fullmatch(s)
 
     def match(self, s: str) -> dict[str, Any] | None:
         if not os.path.isabs(s):
@@ -226,6 +224,7 @@ class PathTemplate(Template):
     def fullmatch(self, s: str) -> dict[str, Any] | None:
         if not os.path.isabs(s):
             return None
+
         rel = os.path.relpath(s, self._root)
         if rel.startswith(".."):
             return None
@@ -233,12 +232,15 @@ class PathTemplate(Template):
 
     def glob(self, values: dict[str, Any]) -> list[str]:
         """Return a list of absolute paths matching the template with *values* applied as glob patterns."""
+
         formatted = {}
         for name, token in self._tokens.items():
-            value = values.get(name, token.placeholder)
-            formatted[name] = token.format(value)
+            value = values.get(name)
+            formatted[name] = token.format(value) if value else "*"
+
         rel_pattern = self._fmt.format_map(formatted)
         abs_pattern = os.path.join(self._root, rel_pattern)
+        print(f"Globbing with pattern: {abs_pattern}")
         return glob.glob(abs_pattern)
 
     def format(self, values: dict[str, Any]) -> str:
@@ -362,7 +364,7 @@ def compile_template(definition: str, tokens: dict[str, Token]) -> CompiledTempl
 
 def compile_path_templates(
     projects_root: str, template_defs: dict[str, str], tokens: dict[str, Token]
-):
+) -> dict[str, PathTemplate]:
     expanded_defs = expand_templates(template_defs)
 
     path_templates = dict[str, PathTemplate]()

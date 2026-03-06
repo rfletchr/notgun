@@ -1,9 +1,11 @@
+from notgun.launcher import Program
 import json
 import os
 import typing
 import notgun.context
 import notgun.templates
 import notgun.adapters
+import notgun.workareas
 
 if typing.TYPE_CHECKING:
     import notgun.launcher
@@ -29,19 +31,19 @@ DEFAULT_CONTEXT_NAMES = (
     "asset_task",
 )
 
-__CURRENT_PIPELINE: "Pipeline|None" = None
+__CURRENT_PIPELINE: "Project|None" = None
 
 
 def get_current():
     return __CURRENT_PIPELINE
 
 
-def set_current(pipeline: "Pipeline|None"):
+def set_current(pipeline: "Project|None"):
     global __CURRENT_PIPELINE
     __CURRENT_PIPELINE = pipeline
 
 
-class Pipeline:
+class Project:
     def __init__(
         self,
         projects_root: str,
@@ -49,13 +51,16 @@ class Pipeline:
         templates: notgun.templates.PathTemplateDict,
         context_names: list[str] | tuple[str, ...],
         programs: dict[str, "notgun.launcher.Program"],
+        root_workarea: notgun.workareas.WorkArea,
     ):
         self._templates = templates.copy()
         self._name = project_name
         self._root = projects_root
         self._context_names = tuple[str, ...](context_names)
-        self._programs = dict(programs)
+        self._programs = dict[str, Program](programs)
         self._app_adpater: notgun.adapters.ApplicationAdapter | None = None
+        self._root_workarea: notgun.workareas.WorkArea = root_workarea
+        self._metadata_cache: dict | None = None
 
         for name in context_names:
             if name not in templates and name != "episode":
@@ -83,12 +88,31 @@ class Pipeline:
         self._app_adpater = app
 
     def metadata(self) -> dict:
+        if self._metadata_cache is not None:
+            return self._metadata_cache
+
         path = os.path.join(self._root, self._name, "init", "project.json")
         try:
             with open(path) as f:
-                return json.load(f)
+                self._metadata_cache = json.load(f)
         except (OSError, json.JSONDecodeError):
-            return {"name": self._name}
+            self._metadata_cache = {"name": self._name}
+
+        return self._metadata_cache
+
+    def label(self):
+        meta = self.metadata()
+        return meta.get("name", self._name)
+
+    def image_path(self):
+        meta = self.metadata()
+        image_path = meta.get("image")
+        if not image_path:
+            return None
+        if not os.path.isabs(image_path):
+            image_path = os.path.join(self._root, self._name, "init", image_path)
+
+        return image_path
 
     def context_from_path(self, path: str):
         for template_name in reversed(self._context_names):
@@ -108,3 +132,6 @@ class Pipeline:
             )
             if template.token_names().issubset(field_names):
                 return template.format(fields)
+
+    def root_workarea(self) -> notgun.workareas.WorkArea:
+        return self._root_workarea

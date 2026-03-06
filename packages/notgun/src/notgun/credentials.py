@@ -1,10 +1,11 @@
 from __future__ import annotations
-
+import sys
+import json
 import platform
 import time
 import webbrowser
 import dataclasses
-
+import keyring
 import requests
 import requests.exceptions
 import shotgun_api3
@@ -58,6 +59,7 @@ def authenticate(
         :class:`AuthenticationError` on network or API failure.
         :class:`AuthenticationTimeout` if the user does not approve in time.
     """
+
     cancel_event = cancel_event or threading.Event()
 
     site_url = site_url.strip().rstrip("/")
@@ -172,7 +174,45 @@ def validate(creds: Credentials, http_proxy: str | None = None) -> bool:
         ) from exc
 
 
+def _store_credentials(creds: Credentials):
+    service_name = f"notgun:flow"
+    encoded = json.dumps(dataclasses.asdict(creds))
+    keyring.set_password(service_name, creds.site_url, encoded)
+
+
+def _load_credentials(site_url: str) -> Credentials | None:
+    service_name = f"notgun:flow"
+    encoded = keyring.get_password(service_name, site_url)
+    if not encoded:
+        return None
+
+    try:
+        data = json.loads(encoded)
+        return Credentials(**data)
+    except Exception:
+        return None
+
+
+def get_credentials(site_url: str) -> Credentials | None:
+    creds = _load_credentials(site_url)
+    if creds and validate(creds):
+        return creds
+
+    creds = authenticate(site_url)
+    _store_credentials(creds)
+    return creds
+
+
 if __name__ == "__main__":
-    creds = authenticate("https://elephant-goldfish.shotgrid.autodesk.com")
-    if validate(creds):
-        print("Success")
+    creds = get_credentials("https://elephant-goldfish.shotgrid.autodesk.com")
+
+    if creds is None:
+        print("Authentication failed.")
+        sys.exit(1)
+
+    sg = shotgun_api3.Shotgun(
+        creds.site_url,
+        session_token=creds.session_token,
+    )
+
+    print(sg.find_one("Project", []))

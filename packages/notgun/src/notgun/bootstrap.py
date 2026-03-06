@@ -3,7 +3,7 @@ import os
 import json
 import typing
 
-import notgun.pipeline
+import notgun.projects
 
 BOOTSTRAP_ENV_VAR = "NOTGUN_BOOTSTRAP_PAYLOAD"
 
@@ -28,7 +28,7 @@ class BootstrapData(typing.NamedTuple):
         return json.dumps(self.to_dict())
 
 
-def init(data: BootstrapData, make_current: bool = False) -> notgun.pipeline.Pipeline:
+def init(data: BootstrapData, make_current: bool = False) -> notgun.projects.Project:
     bootstrap_file = os.path.join(
         data.projects_dir, data.project_name, "init", "bootstrap.py"
     )
@@ -44,11 +44,11 @@ def init(data: BootstrapData, make_current: bool = False) -> notgun.pipeline.Pip
     pipeline = module.bootstrap(data)
 
     if pipeline and make_current:
-        notgun.pipeline.set_current(pipeline)
+        notgun.projects.set_current(pipeline)
 
     return pipeline
 
 
-def init_from_env(make_current: bool = True) -> notgun.pipeline.Pipeline:
+def init_from_env(make_current: bool = True) -> notgun.projects.Project:
     data = BootstrapData.from_env()
     return init(data, make_current=make_current)

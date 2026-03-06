@@ -1,12 +1,15 @@
 import abc
 
 
+class NotSavedError(Exception): ...
+
+
 class ApplicationAdapter(abc.ABC):
     @abc.abstractmethod
     def filepath(self) -> str | None: ...
 
     @abc.abstractmethod
-    def is_dirty(self) -> bool: ...
+    def modified(self) -> bool: ...
 
     @abc.abstractmethod
     def save(self): ...

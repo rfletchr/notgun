@@ -11,13 +11,18 @@ class Program:
     label: str
     executable: str
     args: list[str]
+    open_args: list[str] = dataclasses.field(default_factory=list)
     set_env: dict[str, str] = dataclasses.field(default_factory=dict)
     append_env: dict[str, str] = dataclasses.field(default_factory=dict)
     prefix_env: dict[str, str] = dataclasses.field(default_factory=dict)
     clear_env: tuple[str, ...] = dataclasses.field(default=DEFAULT_CLEAR_LIST)
 
 
-def launch_program(program: Program, env: dict[str, str] | None = None):
+def launch_program(
+    program: Program,
+    env: dict[str, str] | None = None,
+    filename: str | None = None,
+):
     env = env or os.environ.copy()
     for name in program.clear_env:
         env.pop(name, None)
@@ -39,4 +44,9 @@ def launch_program(program: Program, env: dict[str, str] | None = None):
     for name, value in program.set_env.items():
         env[name] = str(value)
 
-    subprocess.run([program.executable, *program.args], env=env, start_new_session=True)
+    if filename:
+        args = [arg.format(filename=filename) for arg in program.open_args]
+    else:
+        args = program.args
+
+    subprocess.run([program.executable, *args], env=env, start_new_session=True)
