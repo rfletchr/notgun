@@ -30,7 +30,7 @@ class WorkAreaModel(QtGui.QStandardItemModel):
         if icon_name in self._icon_cache:
             return self._icon_cache[icon_name]
 
-        icon = qta.icon(icon_name)
+        icon = qta.icon(icon_name, color="darkgray")
         self._icon_cache[icon_name] = icon
         return icon
 
