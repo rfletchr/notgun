@@ -58,6 +58,7 @@ def bootstrap(data) -> notgun.projects.Project:
         token="app",
         children=[],
         workfiles_template=templates["shot_workfile"],
+        icon_name="ph.files-fill",
     )
 
     shot_task_type = notgun.workareas.WorkAreaType(
@@ -65,18 +66,21 @@ def bootstrap(data) -> notgun.projects.Project:
         template=templates["shot_task"],
         token="task",
         children=[shot_workarea_type],
+        icon_name="ri.todo-line",
     )
     shot_type = notgun.workareas.WorkAreaType(
         label="Shot",
         template=templates["shot"],
         token="shot",
         children=[shot_task_type],
+        icon_name="mdi.filmstrip-box",
     )
     sequence_type = notgun.workareas.WorkAreaType(
         label="Sequence",
         template=templates["sequence"],
         token="sequence",
         children=[shot_type],
+        icon_name="mdi.filmstrip-box-multiple",
     )
     project_type = notgun.workareas.WorkAreaType(
         label="Project",

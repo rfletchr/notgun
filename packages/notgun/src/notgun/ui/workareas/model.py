@@ -1,5 +1,6 @@
 from qtpy import QtCore, QtGui
-import time
+import qtawesome as qta
+
 import notgun.workareas
 import concurrent.futures
 
@@ -22,6 +23,35 @@ class WorkAreaModel(QtGui.QStandardItemModel):
         self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
         self._total_locations = 0
         self._path_to_item = {}
+        self._icon_cache = {}
+
+    def getIconForWorkArea(self, work_area: notgun.workareas.WorkArea) -> QtGui.QIcon:
+        icon_name = work_area.type.icon_name
+        if icon_name in self._icon_cache:
+            return self._icon_cache[icon_name]
+
+        icon = qta.icon(icon_name)
+        self._icon_cache[icon_name] = icon
+        return icon
+
+    def data(
+        self,
+        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
+        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
+    ):
+        if not index.isValid():
+            return None
+
+        item = self.itemFromIndex(index)
+        if item is None:
+            return None
+
+        if role == QtCore.Qt.ItemDataRole.DecorationRole:
+            workarea = item.data(QtCore.Qt.UserRole)
+            if workarea:
+                return self.getIconForWorkArea(workarea)
+
+        return super(WorkAreaModel, self).data(index, role)
 
     def onWorkAreaReady(self, location: notgun.workareas.WorkArea):
         item = WorkAreaItem(location)

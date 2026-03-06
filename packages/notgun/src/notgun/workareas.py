@@ -13,6 +13,7 @@ class WorkAreaType:
     token: str
     children: list[WorkAreaType] = dataclasses.field(default_factory=list)
     workfiles_template: notgun.templates.PathTemplate | None = None
+    icon_name: str = "fa6s.folder"
 
     def __repr__(self):
         return f"WorkAreaType(label={self.label})"
