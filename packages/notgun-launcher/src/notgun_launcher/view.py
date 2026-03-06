@@ -1,141 +1,69 @@
 import qtawesome as qta
+from qtpy import QtCore, QtGui, QtWidgets
 
-from qtpy.QtCore import Qt, QModelIndex, QSize, Signal
-from qtpy.QtGui import QPixmap
-from qtpy.QtWidgets import (
-    QHBoxLayout,
-    QLabel,
-    QListView,
-    QPushButton,
-    QStackedWidget,
-    QVBoxLayout,
-    QWidget,
-)
-
-_HEADER_ICON_SIZE = 64
-_BUTTON_ICON_SIZE = QSize(32, 32)
+import notgun.ui.workareas.view
+import notgun.ui.projects.view
+import notgun.ui.workfiles.view
 
 
-def _iconButton(icon_name: str) -> QPushButton:
-    btn = QPushButton()
-    btn.setIcon(qta.icon(icon_name, color="darkgrey"))
-    btn.setIconSize(_BUTTON_ICON_SIZE)
-    btn.setMinimumHeight(_BUTTON_ICON_SIZE.height())
-    btn.setMinimumWidth(_BUTTON_ICON_SIZE.width())
-    btn.setFlat(True)
-    return btn
+class WorkAreasContainer(QtWidgets.QWidget):
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.pixmap_label = QtWidgets.QLabel()
+        self.title_label = QtWidgets.QLabel()
+        self.back_button = QtWidgets.QPushButton("Back")
+
+        header_layout = QtWidgets.QHBoxLayout()
+        header_layout.addWidget(self.pixmap_label)
+        header_layout.addWidget(self.title_label)
+        header_layout.addStretch()
+        header_layout.addWidget(self.back_button)
+
+        self.workareas_view = notgun.ui.workareas.view.WorkAreaView()
+        self.workfiles_view = notgun.ui.workfiles.view.WorkfilesView()
+
+        inner_layout = QtWidgets.QHBoxLayout()
+        inner_layout.addWidget(self.workareas_view, 2)
+        inner_layout.addWidget(self.workfiles_view, 1)
+
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addLayout(header_layout)
+        layout.addLayout(inner_layout)
+
+    def setTitle(self, title: str):
+        self.title_label.setText(title)
+
+    def setPixmap(self, pixmap: QtGui.QPixmap):
+        self.pixmap_label.setPixmap(pixmap)
 
 
-class ProjectsView(QWidget):
-    activated = Signal(QModelIndex)
-    refreshRequested = Signal()
+class MainView(QtWidgets.QWidget):
+    backButtonClicked = QtCore.Signal()
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self.projects_view = notgun.ui.projects.view.ProjectsView()
+        self.work_areas_container = WorkAreasContainer()
 
-        _refreshButton = _iconButton("mdi6.refresh")
+        self.stack_view = QtWidgets.QStackedWidget()
+        self.stack_view.addWidget(self.projects_view)
+        self.stack_view.addWidget(self.work_areas_container)
 
-        _title = QLabel("Projects")
-        _title.setObjectName("viewTitle")
+        layout = QtWidgets.QVBoxLayout(self)
+        layout.addWidget(self.stack_view)
 
-        header = QHBoxLayout()
-        header.addWidget(_title)
-        header.addStretch()
-        header.addWidget(_refreshButton)
+        self.work_areas_container.back_button.clicked.connect(
+            self.backButtonClicked.emit
+        )
 
-        self._listView = QListView()
-        self._listView.setObjectName("projectsList")
-        self._listView.setIconSize(QSize(_HEADER_ICON_SIZE, _HEADER_ICON_SIZE))
-        self._listView.setUniformItemSizes(True)
-        self._listView.setSelectionMode(self._listView.SelectionMode.NoSelection)
+    def setProjectModel(self, model: QtCore.QAbstractItemModel):
+        self.projects_view.setModel(model)
 
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(header)
-        layout.addWidget(self._listView)
+    def setWorkAreaModel(self, model: QtCore.QAbstractItemModel):
+        self.work_areas_container.workareas_view.setModel(model)
 
-        self._listView.activated.connect(self.activated)
-        self._listView.clicked.connect(self.activated)
-        _refreshButton.clicked.connect(self.refreshRequested)
+    def showProjectsView(self):
+        self.stack_view.setCurrentWidget(self.projects_view)
 
-    def setModel(self, model):
-        self._listView.setModel(model)
-
-
-class ProgramsView(QWidget):
-    activated = Signal(QModelIndex)
-    backRequested = Signal()
-    refreshRequested = Signal()
-
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self._iconLabel = QLabel()
-        self._iconLabel.hide()
-        self._nameLabel = QLabel()
-        self._nameLabel.setObjectName("viewTitle")
-
-        _backButton = _iconButton("ph.skip-back-fill")
-        _refreshButton = _iconButton("mdi6.refresh")
-
-        header = QHBoxLayout()
-        header.addWidget(_backButton)
-        header.addWidget(self._iconLabel)
-        header.addWidget(self._nameLabel)
-        header.addStretch()
-        header.addWidget(_refreshButton)
-
-        self._listView = QListView()
-        self._listView.setObjectName("programsList")
-
-        layout = QVBoxLayout(self)
-        layout.setContentsMargins(0, 0, 0, 0)
-        layout.addLayout(header)
-        layout.addWidget(self._listView)
-
-        self._listView.activated.connect(self.activated)
-        _backButton.clicked.connect(self.backRequested)
-        _refreshButton.clicked.connect(self.refreshRequested)
-
-    def setModel(self, model):
-        self._listView.setModel(model)
-
-    def setLabel(self, text: str):
-        self._nameLabel.setText(text)
-
-    def setIcon(self, pixmap: QPixmap | None):
-        if pixmap is not None and not pixmap.isNull():
-            self._iconLabel.setPixmap(
-                pixmap.scaled(
-                    _HEADER_ICON_SIZE,
-                    _HEADER_ICON_SIZE,
-                    Qt.AspectRatioMode.KeepAspectRatio,
-                    Qt.TransformationMode.SmoothTransformation,
-                )
-            )
-            self._iconLabel.show()
-        else:
-            self._iconLabel.hide()
-
-
-class MainView(QWidget):
-    def __init__(self, parent=None):
-        super().__init__(parent)
-
-        self.projectsView = ProjectsView()
-        self.programsView = ProgramsView()
-
-        self._stack = QStackedWidget()
-        self._stack.addWidget(self.projectsView)
-        self._stack.addWidget(self.programsView)
-
-        layout = QVBoxLayout(self)
-        layout.addWidget(self._stack)
-
-        self.showProjectList()
-
-    def showProjectList(self):
-        self._stack.setCurrentIndex(0)
-
-    def showProgramList(self):
-        self._stack.setCurrentIndex(1)
+    def showWorkAreasView(self):
+        self.stack_view.setCurrentWidget(self.work_areas_container)

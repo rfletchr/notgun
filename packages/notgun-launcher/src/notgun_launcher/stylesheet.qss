@@ -24,6 +24,7 @@ QListView::item {
 
 }
 
+
 QListView#projectsList::item {
     height: 72px;
 }
@@ -31,6 +32,23 @@ QListView#projectsList::item {
 QListView#programsList::item {
     height: 40px;
 }
+
+/* ── Tree Views ────────────────────────────────────────────── */
+
+QTreeView {
+    background-color: #1e1e1e;
+    border-radius: 8px;
+    border: #1e1e1e;
+    outline: 0;
+    padding: 6px;
+}
+
+
+QTreeView#locationsList::item {
+    height: 36px;
+}
+
+
 
 QListView::item:hover {
     background-color: #2a2d2e;

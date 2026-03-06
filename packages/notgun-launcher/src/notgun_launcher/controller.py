@@ -1,142 +1,94 @@
 import os
 
-from qtpy.QtCore import Qt, QModelIndex
-from qtpy.QtGui import QIcon, QPixmap, QStandardItem, QStandardItemModel
-from qtpy.QtWidgets import QMainWindow
+from qtpy import QtCore, QtGui, QtWidgets
 
-import notgun.bootstrap
-import notgun.launcher
-import notgun.pipeline
+import notgun.workareas
+import notgun_launcher.view
+import notgun.ui.workareas.controller
+import notgun.ui.projects.controller
+import notgun.ui.projects.model
+import notgun.ui.workfiles.controller
 
-from notgun_launcher.view import MainView
 
+class MainController:
+    def __init__(
+        self, projects_dir: str, view: notgun_launcher.view.MainView | None = None
+    ):
+        self.view = view or notgun_launcher.view.MainView()
 
-class LauncherController:
-    def __init__(self, projects_dir: str):
-        self._projects_dir = projects_dir
-        self._current_project_name: str | None = None
-        self._pipeline: notgun.pipeline.Pipeline | None = None
-        self._pipelines: dict[str, notgun.pipeline.Pipeline] = {}
+        self.projects_controller = notgun.ui.projects.controller.ProjectsController(
+            projects_dir,
+            self.view.projects_view,
+        )
 
-        self._projects_model = QStandardItemModel()
-        self._programs_model = QStandardItemModel()
+        self.workareas_controller = notgun.ui.workareas.controller.WorkAreaController(
+            self.view.work_areas_container.workareas_view,
+        )
 
-        self.central_widget = MainView()
-        self.central_widget.projectsView.setModel(self._projects_model)
-        self.central_widget.programsView.setModel(self._programs_model)
-
-        self.central_widget.projectsView.activated.connect(self._onProjectActivated)
-        self.central_widget.projectsView.refreshRequested.connect(self._load_projects)
-        self.central_widget.programsView.activated.connect(self._onProgramActivated)
-        self.central_widget.programsView.backRequested.connect(self._load_projects)
-        self.central_widget.programsView.refreshRequested.connect(self._reload_programs)
-
-        self.window = QMainWindow()
-        self.window.setCentralWidget(self.central_widget)
-
-        self._load_projects()
-
-    def _find_project_names(self) -> list[str]:
-        names = []
-        try:
-            for name in sorted(os.listdir(self._projects_dir)):
-                dirname = os.path.join(self._projects_dir, name)
-                if not os.access(dirname, os.X_OK):
-                    continue
-
-                bootstrap = os.path.join(dirname, "init", "bootstrap.py")
-                if os.path.isfile(bootstrap):
-                    names.append(name)
-        except OSError:
-            pass
-        return names
-
-    def _get_project_pixmap(self, pipeline: notgun.pipeline.Pipeline) -> QPixmap | None:
-        image_path = pipeline.metadata().get("image")
-        if not image_path:
-            return None
-        if not os.path.isabs(image_path):
-            image_path = os.path.join(
-                self._projects_dir, pipeline.name(), "init", image_path
+        self.workfiles_controller = (
+            notgun.ui.workfiles.controller.WorkfilesViewController(
+                self.view.work_areas_container.workfiles_view
             )
-        if not os.path.isfile(image_path):
-            return None
-        pixmap = QPixmap(image_path)
-        return pixmap if not pixmap.isNull() else None
+        )
 
-    def _make_project_item(self, pipeline: notgun.pipeline.Pipeline) -> QStandardItem:
-        meta = pipeline.metadata()
-        item = QStandardItem(meta.get("name", pipeline.name()))
-        item.setEditable(False)
-        item.setData(pipeline.name(), Qt.ItemDataRole.UserRole)
+        self.projects_controller.projectActivated.connect(self.onProjectClicked)
+        self.projects_controller.projectClicked.connect(self.onProjectClicked)
 
-        pixmap = self._get_project_pixmap(pipeline)
-        if pixmap is not None:
-            item.setIcon(QIcon(pixmap))
+        self.workareas_controller.workAreaClicked.connect(self.onWorkAreaClicked)
+        self.view.backButtonClicked.connect(self.onBackButtonClicked)
 
-        return item
+    def populate(self):
+        self.projects_controller.populate()
 
-    def _load_projects(self):
-        self._current_project_name = None
-        self._pipeline = None
-        self._pipelines = {}
-        self._projects_model.clear()
+    def onProjectClicked(self, project_wrapper: notgun.ui.projects.model.ProjectItem):
 
-        for name in self._find_project_names():
-            data = notgun.bootstrap.BootstrapData(self._projects_dir, name)
-            pipeline = notgun.bootstrap.init(data)
-            self._pipelines[name] = pipeline
-            self._projects_model.appendRow(self._make_project_item(pipeline))
-
-        self.central_widget.showProjectList()
-
-    def _load_programs(self):
-        self._programs_model.clear()
-
-        if self._pipeline is None:
+        if not project_wrapper.project:
+            QtWidgets.QMessageBox.critical(
+                self.view,
+                "Error",
+                f"Project '{project_wrapper.name}' is in an error state and cannot be opened.\n\nError details:\n{project_wrapper.error}",
+            )
             return
 
-        for program in self._pipeline.programs().values():
-            item = QStandardItem(program.label)
-            item.setEditable(False)
-            item.setData(program, Qt.ItemDataRole.UserRole)
-            self._programs_model.appendRow(item)
+        self.workfiles_controller.clear()
+        self.workareas_controller.populate(project_wrapper.project.root_workarea())
+        self.view.showWorkAreasView()
 
-        meta = self._pipeline.metadata()
-        self.central_widget.programsView.setLabel(
-            meta.get("name", self._pipeline.name())
-        )
-        self.central_widget.programsView.setIcon(
-            self._get_project_pixmap(self._pipeline)
-        )
-        self.central_widget.showProgramList()
+        self.view.work_areas_container.setTitle(project_wrapper.name)
+        if project_wrapper.pixmap:
+            # TODO: make this its own method.
+            self.view.work_areas_container.setPixmap(
+                project_wrapper.pixmap.scaledToHeight(
+                    64, QtCore.Qt.TransformationMode.SmoothTransformation
+                )
+            )
 
-    def _reload_programs(self):
-        if self._current_project_name is None:
-            return
-        data = notgun.bootstrap.BootstrapData(
-            self._projects_dir, self._current_project_name
-        )
-        self._pipeline = notgun.bootstrap.init(data)
-        self._pipelines[self._current_project_name] = self._pipeline
-        self._load_programs()
+    def onWorkAreaClicked(self, work_area: notgun.workareas.WorkArea):
+        self.workfiles_controller.clear()
 
-    def _onProjectActivated(self, index: QModelIndex):
-        name = index.data(Qt.ItemDataRole.UserRole)
-        self._current_project_name = name
-        self._pipeline = self._pipelines[name]
-        self._load_programs()
-
-    def _onProgramActivated(self, index: QModelIndex):
-        if self._current_project_name is None:
+        if not work_area.type.workfiles_template:
             return
 
-        program: notgun.launcher.Program = index.data(Qt.ItemDataRole.UserRole)
+        print(
+            "MainController: onWorkAreaClicked - populating workfiles view with template",
+            work_area.type.workfiles_template,
+            "and fields",
+            work_area.fields,
+        )
 
-        env = os.environ.copy()
-        env[notgun.bootstrap.BOOTSTRAP_ENV_VAR] = notgun.bootstrap.BootstrapData(
-            self._projects_dir,
-            self._current_project_name,
-        ).to_json_str()
+        self.workfiles_controller.populate(
+            work_area.type.workfiles_template,
+            work_area.fields,
+        )
 
-        notgun.launcher.launch_program(program, env=env)
+    def onBackButtonClicked(self):
+        self.view.showProjectsView()
+
+
+if __name__ == "__main__":
+    app = QtWidgets.QApplication([])
+    controller = MainController("/home/rob/Development/notgun/example")
+    controller.populate()
+
+    controller.view.show()
+    app.exec()
