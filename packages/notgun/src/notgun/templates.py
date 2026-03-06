@@ -240,7 +240,6 @@ class PathTemplate(Template):
 
         rel_pattern = self._fmt.format_map(formatted)
         abs_pattern = os.path.join(self._root, rel_pattern)
-        print(f"Globbing with pattern: {abs_pattern}")
         return glob.glob(abs_pattern)
 
     def format(self, values: dict[str, Any]) -> str:
