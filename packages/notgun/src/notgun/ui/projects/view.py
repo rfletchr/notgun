@@ -97,7 +97,7 @@ class ProjectsDelegate(QtWidgets.QStyledItemDelegate):
             return super().paint(painter, option, index)
 
         # use a dark bg color
-        base_bg = option.palette.color(QtGui.QPalette.ColorRole.Dark)
+        base_bg = QtGui.QColor(32, 32, 32)
 
         # modulate the base bg color to give us an alternate color for even/odd rows
         if index.row() % 2 == 0:
