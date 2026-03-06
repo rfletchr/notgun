@@ -75,8 +75,15 @@ def scan_directory(projects_dir: str, icon_size: int) -> typing.Iterator[Project
         label = name
         error = None
         pixmap = None
+        path = os.path.join(projects_dir, name)
 
-        if os.access(os.path.join(projects_dir, name), os.X_OK):
+        if os.access(path, os.X_OK):
+            if not os.path.isdir(path):
+                continue
+
+            if not notgun.bootstrap.has_bootstrap(projects_dir, name):
+                continue
+
             data = notgun.bootstrap.BootstrapData(projects_dir, name)
             try:
                 pipeline = notgun.bootstrap.init(data)

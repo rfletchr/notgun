@@ -28,6 +28,11 @@ class BootstrapData(typing.NamedTuple):
         return json.dumps(self.to_dict())
 
 
+def has_bootstrap(projects_dir: str, project_name: str) -> bool:
+    bootstrap_file = os.path.join(projects_dir, project_name, "init", "bootstrap.py")
+    return os.path.isfile(bootstrap_file)
+
+
 def init(data: BootstrapData, make_current: bool = False) -> notgun.projects.Project:
     bootstrap_file = os.path.join(
         data.projects_dir, data.project_name, "init", "bootstrap.py"
