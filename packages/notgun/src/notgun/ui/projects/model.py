@@ -92,4 +92,7 @@ def scan_directory(projects_dir: str, icon_size: int) -> typing.Iterator[Project
         else:
             status = ProjectStatus.LOCKED
 
+        if status == ProjectStatus.LOCKED:
+            continue
+
         yield ProjectItem(label, status, pipeline, error, pixmap)
