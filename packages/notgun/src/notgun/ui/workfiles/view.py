@@ -9,7 +9,7 @@ class WorkfilesView(QtWidgets.QWidget):
         super().__init__(parent)
         self.proxy_model = QtCore.QSortFilterProxyModel()
 
-        self.view = QtWidgets.QTreeView()
+        self.view = QtWidgets.QListView()
         self.view.setAlternatingRowColors(True)
         self.view.setModel(self.proxy_model)
 

@@ -42,16 +42,11 @@ class WorkAreaController(QtCore.QObject):
         self.workAreaActivated.emit(work_area)
 
     def onWorkAreaClicked(self, index: QtCore.QModelIndex):
-        print("WorkAreaController: onWorkAreaClicked", index)
         if not index.isValid():
             return
 
         work_area = self._model.workAreaFromIndex(index)
         if work_area is None:
-            print(
-                "WorkAreaController: onWorkAreaClicked - no work area found for index",
-                index,
-            )
             return
 
         self.workAreaClicked.emit(work_area)

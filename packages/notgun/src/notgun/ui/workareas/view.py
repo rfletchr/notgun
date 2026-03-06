@@ -19,6 +19,7 @@ class ActiveView(QtWidgets.QWidget):
         self.proxy_model.setDynamicSortFilter(True)
 
         self.tree_view = QtWidgets.QTreeView()
+        self.tree_view.setHeaderHidden(True)
         self.tree_view.setModel(self.proxy_model)
 
         layout = QtWidgets.QVBoxLayout(self)
