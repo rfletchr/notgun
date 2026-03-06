@@ -69,13 +69,6 @@ class MainController:
         if not work_area.type.workfiles_template:
             return
 
-        print(
-            "MainController: onWorkAreaClicked - populating workfiles view with template",
-            work_area.type.workfiles_template,
-            "and fields",
-            work_area.fields,
-        )
-
         self.workfiles_controller.populate(
             work_area.type.workfiles_template,
             work_area.fields,
