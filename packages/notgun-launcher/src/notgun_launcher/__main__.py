@@ -5,7 +5,7 @@ import qtawesome as qta
 
 from qtpy.QtWidgets import QApplication
 
-from notgun_launcher.controller import LauncherController
+from notgun_launcher.controller import MainController
 
 PROJECTS_DIR_ENV = "NOTGUN_PROJECTS_DIR"
 
@@ -42,9 +42,9 @@ def main() -> int:
     icon = qta.icon("fa6s.peace")
     app.setWindowIcon(icon)
 
-    controller = LauncherController(projects_dir)
-    controller.window.show()
-    controller.window.setWindowIcon(icon)
+    controller = MainController(projects_dir)
+    controller.view.show()
+    controller.populate()
     return app.exec()
 
 
