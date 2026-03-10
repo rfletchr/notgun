@@ -2,7 +2,6 @@ from notgun.launcher import Program
 import json
 import os
 import typing
-import notgun.context
 import notgun.templates
 import notgun.adapters
 import notgun.workareas
@@ -100,7 +99,7 @@ class Project:
 
         return self._metadata_cache
 
-    def label(self):
+    def label(self) -> str:
         meta = self.metadata()
         return meta.get("name", self._name)
 
@@ -114,24 +113,5 @@ class Project:
 
         return image_path
 
-    def context_from_path(self, path: str):
-        for template_name in reversed(self._context_names):
-            fields = self._templates[template_name].parse(path)
-            if not fields:
-                continue
-
-            return notgun.context.Context(**fields)
-
-    def path_from_context(self, context: notgun.context.Context):
-        fields = context.as_dict()
-        field_names = set(fields.keys())
-
-        for template_name in reversed(self._context_names):
-            template = typing.cast(
-                notgun.templates.PathTemplate, self._templates[template_name]
-            )
-            if template.token_names().issubset(field_names):
-                return template.format(fields)
-
-    def root_workarea(self) -> notgun.workareas.WorkArea:
+    def workarea(self) -> notgun.workareas.WorkArea:
         return self._root_workarea

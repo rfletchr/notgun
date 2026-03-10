@@ -2,80 +2,59 @@ from qtpy import QtCore, QtWidgets
 
 import notgun.ui.workareas.model
 
+ContextMenuPolicy = QtCore.Qt.ContextMenuPolicy
 
-class ActiveView(QtWidgets.QWidget):
-    clicked = QtCore.Signal(QtCore.QModelIndex)
-    activated = QtCore.Signal(QtCore.QModelIndex)
+
+class WorkareasView(QtWidgets.QWidget):
+    itemClicked = QtCore.Signal(QtCore.QModelIndex)
+    itemActivated = QtCore.Signal(QtCore.QModelIndex)
+    contextMenuRequested = QtCore.Signal(QtCore.QPoint, QtCore.QModelIndex)
 
     def __init__(self, parent=None):
-        super(ActiveView, self).__init__(parent)
-        self.search_bar = QtWidgets.QLineEdit()
-        self.search_bar.setPlaceholderText("Search...")
+        super().__init__(parent)
 
         self.proxy_model = QtCore.QSortFilterProxyModel()
-        self.proxy_model.setFilterCaseSensitivity(QtCore.Qt.CaseInsensitive)
+        self.proxy_model.setFilterCaseSensitivity(
+            QtCore.Qt.CaseSensitivity.CaseInsensitive
+        )
         self.proxy_model.setRecursiveFilteringEnabled(True)
-        self.proxy_model.setFilterRole(notgun.ui.workareas.model.PATH_ROLE)
-        self.proxy_model.setDynamicSortFilter(True)
+        self.proxy_model.setSortRole(notgun.ui.workareas.model.ModelRole.Path)
+        self.proxy_model.setFilterRole(notgun.ui.workareas.model.ModelRole.Path)
 
-        self.tree_view = QtWidgets.QTreeView()
-        self.tree_view.setHeaderHidden(True)
-        self.tree_view.setModel(self.proxy_model)
+        self.search_bar = QtWidgets.QLineEdit()
+        self.search_bar.setPlaceholderText("Search...")
+        self.search_bar.textChanged.connect(self.onSearchTextChanged)
+
+        self.item_view = QtWidgets.QTreeView()
+        self.item_view.setHeaderHidden(True)
+        self.item_view.clicked.connect(self.itemClicked)
+        self.item_view.activated.connect(self.itemActivated)
+        self.item_view.setContextMenuPolicy(ContextMenuPolicy.CustomContextMenu)
+        self.item_view.setAlternatingRowColors(True)
+        self.item_view.setModel(self.proxy_model)
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.search_bar)
-        layout.addWidget(self.tree_view)
+        layout.addWidget(self.item_view)
 
-        self.search_bar.textChanged.connect(self.onTextChanged)
-        self.tree_view.clicked.connect(self.onItemClicked)
-        self.tree_view.activated.connect(self.onItemActivated)
+        # connect signals
+        self.item_view.clicked.connect(self.itemClicked)
+        self.item_view.activated.connect(self.itemActivated)
+        self.item_view.customContextMenuRequested.connect(self.onContextMenuRequested)
 
-    def onTextChanged(self, text):
-        if self.proxy_model.sourceModel() is not None:
-            self.proxy_model.setFilterWildcard(text)
-            self.tree_view.expandAll()
+    def onSearchTextChanged(self, text: str):
+        self.proxy_model.setFilterWildcard(text)
 
-        if text == "":
-            self.tree_view.collapseAll()
+        if text:
+            self.item_view.expandAll()
 
-    def onItemClicked(self, index):
-        if not self.proxy_model.sourceModel():
-            return
+    def onContextMenuRequested(self, pos: QtCore.QPoint):
+        index = self.item_view.indexAt(pos)
         if not index.isValid():
             return
-        source_index = self.proxy_model.mapToSource(index)
-        self.clicked.emit(source_index)
 
-    def onItemActivated(self, index):
-        if not self.proxy_model.sourceModel():
-            return
-        if not index.isValid():
-            return
-        source_index = self.proxy_model.mapToSource(index)
-        self.activated.emit(source_index)
+        global_pos = self.item_view.viewport().mapToGlobal(pos)
+        self.contextMenuRequested.emit(global_pos, index)
 
-    def setModel(self, model):
+    def setModel(self, model: notgun.ui.workareas.model.WorkAreaModel):
         self.proxy_model.setSourceModel(model)
-
-
-class WorkAreaView(QtWidgets.QWidget):
-    clicked = QtCore.Signal(QtCore.QModelIndex)
-    activated = QtCore.Signal(QtCore.QModelIndex)
-
-    def __init__(self, parent=None):
-        super(WorkAreaView, self).__init__(parent)
-        self._active_view = ActiveView()
-        self._status_label = QtWidgets.QLabel("")
-
-        layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self._active_view)
-        layout.addWidget(self._status_label)
-
-        self._active_view.clicked.connect(self.clicked.emit)
-        self._active_view.activated.connect(self.activated.emit)
-
-    def setModel(self, model):
-        self._active_view.setModel(model)
-
-    def setStatus(self, text):
-        self._status_label.setText(text)

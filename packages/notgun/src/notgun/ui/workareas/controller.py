@@ -6,69 +6,51 @@ import notgun.ui.workareas.model
 
 
 class WorkAreaController(QtCore.QObject):
-    workAreaActivated = QtCore.Signal(notgun.workareas.WorkArea)
-    workAreaClicked = QtCore.Signal(notgun.workareas.WorkArea)
-
     def __init__(
         self,
-        view: notgun.ui.workareas.view.WorkAreaView | None = None,
+        view: notgun.ui.workareas.view.WorkareasView | None = None,
         parent=None,
     ):
-        super(WorkAreaController, self).__init__(parent)
-        self._model = notgun.ui.workareas.model.WorkAreaModel()
-        self._model.locationCountChanged.connect(self.onWorkAreaCountChanged)
-        self._model.busy.connect(self.onBusyChanged)
+        super().__init__(parent=parent)
+        self.model = notgun.ui.workareas.model.WorkAreaModel()
 
-        self.view = view or notgun.ui.workareas.view.WorkAreaView()
-        self.view.setModel(self._model)
+        self.view = view or notgun.ui.workareas.view.WorkareasView()
+        self.view.setModel(self.model)
 
-        self.view.clicked.connect(self.onWorkAreaClicked)
-        self.view.activated.connect(self.onWorkAreaActivated)
+        self.view.itemClicked.connect(self.onWorkareaItemClicked)
 
-    def populate(self, workarea: notgun.workareas.WorkArea):
-        self._model.scan(workarea)
+    def populate(self, root_workarea: notgun.workareas.WorkArea):
+        self.model.clear()
+        self.model.scan(root_workarea)
 
-    def onWorkAreaCountChanged(self, count):
-        self.view.setStatus(f"Found {count} locations...")
+    def shutdown(self):
+        self.model.shutdown()
 
-    def onWorkAreaActivated(self, index: QtCore.QModelIndex):
-        if not index.isValid():
+    def onWorkareaItemClicked(self, index: QtCore.QModelIndex):
+        item = self.model.itemFromIndex(index)
+        if item is None:
             return
 
-        work_area = self._model.workAreaFromIndex(index)
-        if work_area is None:
+        data = item.data(notgun.ui.workareas.model.ModelRole.Data)
+
+        if not isinstance(data, notgun.workareas.WorkArea):
             return
-
-        self.workAreaActivated.emit(work_area)
-
-    def onWorkAreaClicked(self, index: QtCore.QModelIndex):
-        if not index.isValid():
-            return
-
-        work_area = self._model.workAreaFromIndex(index)
-        if work_area is None:
-            return
-
-        self.workAreaClicked.emit(work_area)
-
-    def onBusyChanged(self, busy):
-        if busy:
-            self.view.setStatus("Scanning for locations...")
-        else:
-            self.view.setStatus("Scan complete.")
 
 
 if __name__ == "__main__":
-    from qtpy import QtWidgets
     import notgun.bootstrap
 
     data = notgun.bootstrap.BootstrapData(
-        "/home/rob/Development/notgun/example", "project_1"
+        "/home/rob/Development/notgun/example",
+        "project_1",
     )
-    pipeline = notgun.bootstrap.init(data)
+
+    project = notgun.bootstrap.init(data)
 
     app = QtWidgets.QApplication([])
     controller = WorkAreaController()
-    controller.populate(pipeline.root_workarea())
+    controller.populate(project.workarea())
     controller.view.show()
+
+    app.aboutToQuit.connect(controller.shutdown)
     app.exec()

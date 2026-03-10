@@ -1,23 +1,25 @@
+import logging
 from qtpy import QtGui, QtCore, QtWidgets
 
+import notgun.projects
 import notgun.ui.projects.view
 import notgun.ui.projects.model
 
+logger = logging.getLogger("notgun.ui.logger.controller")
+
 
 class ProjectsController(QtCore.QObject):
-    projectActivated = QtCore.Signal(notgun.ui.projects.model.ProjectItem)
-    projectClicked = QtCore.Signal(notgun.ui.projects.model.ProjectItem)
+    projectActivated = QtCore.Signal(notgun.projects.Project)
+    projectClicked = QtCore.Signal(notgun.projects.Project)
 
     def __init__(
         self,
-        projects_dir: str,
         view: notgun.ui.projects.view.ProjectsView | None = None,
         parent=None,
     ):
         super().__init__(parent)
-        self.projects_dir = projects_dir
         self.view = view or notgun.ui.projects.view.ProjectsView()
-        self.model = notgun.ui.projects.model.ProjectsModel(projects_dir)
+        self.model = notgun.ui.projects.model.ProjectsModel()
         self.view.setModel(self.model)
 
         self.view.activated.connect(self.onProjectActivated)
@@ -35,15 +37,16 @@ class ProjectsController(QtCore.QObject):
             return
         self.projectClicked.emit(project)
 
-    def populate(self):
-        self.model.populate()
+    def populate(self, projects_dir: str):
+        logger.debug(f"Populating projects from directory: {projects_dir}")
+        self.model.populate(projects_dir)
 
 
 if __name__ == "__main__":
     import sys
 
     app = QtWidgets.QApplication(sys.argv)
-    controller = ProjectsController("/home/rob/Development/notgun/example")
-    controller.populate()
+    controller = ProjectsController()
+    controller.populate("/home/rob/Development/notgun/example")
     controller.view.show()
     sys.exit(app.exec())

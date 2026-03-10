@@ -53,7 +53,7 @@ def bootstrap(data) -> notgun.projects.Project:
         ),
     }
 
-    workarea_type = notgun.workareas.WorkAreaType(
+    workarea_type = notgun.workareas.ProjectSchema(
         label="Workarea",
         template=templates["shot_workarea"],
         token="app",
@@ -61,25 +61,25 @@ def bootstrap(data) -> notgun.projects.Project:
         workfiles_template=templates["shot_workfile"],
     )
 
-    task_type = notgun.workareas.WorkAreaType(
+    task_type = notgun.workareas.ProjectSchema(
         label="Task",
         template=templates["shot_task"],
         token="task",
         children=[workarea_type],
     )
-    shot_type = notgun.workareas.WorkAreaType(
+    shot_type = notgun.workareas.ProjectSchema(
         label="Shot",
         template=templates["shot"],
         token="shot",
         children=[task_type],
     )
-    sequence_type = notgun.workareas.WorkAreaType(
+    sequence_type = notgun.workareas.ProjectSchema(
         label="Sequence",
         template=templates["sequence"],
         token="sequence",
         children=[shot_type],
     )
-    project_type = notgun.workareas.WorkAreaType(
+    project_type = notgun.workareas.ProjectSchema(
         label="Project",
         template=templates["project"],
         token="project",

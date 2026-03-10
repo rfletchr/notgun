@@ -1,119 +1,190 @@
-from qtpy import QtCore, QtGui
-import qtawesome as qta
+import os
+import queue
+import enum
+import logging
+import threading
+from qtpy import QtCore, QtGui, QtWidgets
 
 import notgun.workareas
-import concurrent.futures
 
-PATH_ROLE = QtCore.Qt.ItemDataRole.DisplayRole + 1
+
+logger = logging.getLogger(__name__)
+
+
+class ModelRole(enum.IntEnum):
+    Type = QtCore.Qt.ItemDataRole.UserRole
+    Path = QtCore.Qt.ItemDataRole.UserRole + 1
+    Data = QtCore.Qt.ItemDataRole.UserRole + 2
+
+
+class ItemType(enum.IntEnum):
+    Workarea = 0
+    WorkfileGroup = 1
 
 
 class WorkAreaModel(QtGui.QStandardItemModel):
-    busy = QtCore.Signal(bool)
-    locationCountChanged = QtCore.Signal(int)
+    # this signal forwards the scan request to the background thread.
+    __sendToThreadSignal = QtCore.Signal(notgun.workareas.WorkArea)
+    itemCounterChanged = QtCore.Signal(int)
 
-    class PrivateSignals(QtCore.QObject):
-        location_ready = QtCore.Signal(notgun.workareas.WorkArea)
-
-    def __init__(self, parent=None):
-        super(WorkAreaModel, self).__init__(parent)
-        self._private_signals = self.PrivateSignals()
-        self._private_signals.location_ready.connect(self.onWorkAreaReady)
-
-        self._scanning = False
-        self._executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        self._total_locations = 0
-        self._path_to_item = {}
-        self._icon_cache = {}
-
-    def getIconForWorkArea(self, work_area: notgun.workareas.WorkArea) -> QtGui.QIcon:
-        icon_name = work_area.type.icon_name
-        if icon_name in self._icon_cache:
-            return self._icon_cache[icon_name]
-
-        icon = qta.icon(icon_name, color="darkgray")
-        self._icon_cache[icon_name] = icon
-        return icon
-
-    def data(
-        self,
-        index: QtCore.QModelIndex | QtCore.QPersistentModelIndex,
-        role: int = QtCore.Qt.ItemDataRole.DisplayRole,
+    def __init__(
+        self, icon_provider: QtWidgets.QFileIconProvider | None = None, parent=None
     ):
-        if not index.isValid():
-            return None
+        super().__init__(parent=parent)
+        self.setHorizontalHeaderLabels(["Name"])
+        self.icon_provider = icon_provider or QtWidgets.QFileIconProvider()
 
-        item = self.itemFromIndex(index)
-        if item is None:
-            return None
+        self.__worker = BackgroundScanner()
+        self.__worker.workareaFound.connect(self.onWorkareaFound)
+        self.__worker.workfileGroupFound.connect(self.onWorkfileGroupFound)
 
-        if role == QtCore.Qt.ItemDataRole.DecorationRole:
-            workarea = item.data(QtCore.Qt.UserRole)
-            if workarea:
-                return self.getIconForWorkArea(workarea)
+        self.__sendToThreadSignal.connect(self.__worker.scan)
 
-        return super(WorkAreaModel, self).data(index, role)
+        self.__scanner_thread = QtCore.QThread()
+        self.__scanner_thread.setObjectName("WorkAreaModelThread")
+        self.__worker.moveToThread(self.__scanner_thread)
 
-    def onWorkAreaReady(self, location: notgun.workareas.WorkArea):
-        item = WorkAreaItem(location)
-        self._path_to_item[location.path] = item
+        self.__icon_loader_thread = IconLoaderThread()
+        self.__icon_loader_thread.setObjectName("IconLoaderThread")
+        self.__icon_loader_thread.imageLoaded.connect(self.onImageLoaded)
+        self.__icon_loader_thread.start()
 
-        if location.parent and location.parent.path in self._path_to_item:
-            parent_item = self._path_to_item[location.parent.path]
-            parent_item.appendRow(item)
-        else:
-            self.invisibleRootItem().appendRow(item)
+        self.__path_to_item = dict[str, QtGui.QStandardItem]()
 
     def clear(self):
-        super(WorkAreaModel, self).clear()
-        self._path_to_item.clear()
-        self._total_locations = 0
-        self.locationCountChanged.emit(0)
+        super().clear()
+        self.setHorizontalHeaderLabels(["Name"])
+        self.__path_to_item.clear()
+        self.__worker.cancel_event.set()
 
-    def workAreaFromIndex(
-        self, index: QtCore.QModelIndex
-    ) -> notgun.workareas.WorkArea | None:
-        if not index.isValid():
-            return None
-        item = self.itemFromIndex(index)
-        if item is None:
-            return None
-        location = item.data(QtCore.Qt.UserRole)
-        return location
+    def scan(self, root_workarea: notgun.workareas.WorkArea):
+        if not self.__scanner_thread.isRunning():
+            self.__scanner_thread.start()
 
-    def scan(self, location: notgun.workareas.WorkArea):
-        if self._scanning:
+        self.__sendToThreadSignal.emit(root_workarea)
+
+    def shutdown(self):
+        self.__worker.cancel_event.set()
+        self.__icon_loader_thread.cancel_event.set()
+
+        self.__scanner_thread.quit()
+        self.__scanner_thread.wait()
+
+        self.__icon_loader_thread.quit()
+        self.__icon_loader_thread.wait()
+
+    def onImageLoaded(self, path: str, image: QtGui.QImage):
+        if path not in self.__path_to_item:
             return
 
-        self.clear()
+        item = self.__path_to_item[path]
+        icon = QtGui.QIcon(QtGui.QPixmap.fromImage(image))
+        item.setIcon(icon)
 
-        self._scanning = True
-        self.busy.emit(True)
-        self._executor.submit(self.__scan, location)
+    def onWorkareaFound(self, workarea: notgun.workareas.WorkArea):
+        if workarea.path in self.__path_to_item:
+            return
 
-    def __scan(self, location: notgun.workareas.WorkArea):
+        if workarea.parent is None or workarea.parent.path not in self.__path_to_item:
+            parent_item = self.invisibleRootItem()
+        else:
+            parent_item = self.__path_to_item[workarea.parent.path]
 
-        def _scan(parent):
-            for child in parent.ls():
-                self._private_signals.location_ready.emit(child)
-                self._total_locations += 1
-                self.locationCountChanged.emit(self._total_locations)
-                _scan(child)
+        item = QtGui.QStandardItem(workarea.name)
+        item.setEditable(False)
+        item.setData(ItemType.Workarea, ModelRole.Type)
+        item.setData(workarea.path, ModelRole.Path)
+        item.setData(workarea, ModelRole.Data)
 
-        _scan(location)
-        self.busy.emit(False)
-        self._scanning = False
+        icon = self.icon_provider.icon(QtWidgets.QFileIconProvider.IconType.Folder)
+        item.setIcon(icon)
+
+        parent_item.appendRow(item)
+
+        self.__path_to_item[workarea.path] = item
+        self.__icon_loader_thread.work_queue.put(workarea.path)
+
+    def onWorkfileGroupFound(self, group: notgun.workareas.WorkfileGroup):
+
+        parent_item = self.__path_to_item[group.parent.path]
+
+        parent_path = parent_item.data(ModelRole.Path)
+        path = os.path.join(parent_path, group.name + "." + group.ext)
+
+        item = QtGui.QStandardItem(os.path.basename(path))
+        item.setEditable(False)
+        item.setData(ItemType.WorkfileGroup, ModelRole.Type)
+        item.setData(path, ModelRole.Path)
+        item.setData(group, ModelRole.Data)
+
+        file_info = QtCore.QFileInfo(path)
+        icon = self.icon_provider.icon(file_info)
+        item.setIcon(icon)
+
+        parent_item.appendRow(item)
 
 
-class WorkAreaItem(QtGui.QStandardItem):
-    def __init__(self, location: notgun.workareas.WorkArea):
-        super(WorkAreaItem, self).__init__(location.name)
-        self.setEditable(False)
-        self.setData(location, QtCore.Qt.UserRole)
-        self.setData(location.path, PATH_ROLE)
+class BackgroundScanner(QtCore.QObject):
+    workareaFound = QtCore.Signal(notgun.workareas.WorkArea)
+    workfileGroupFound = QtCore.Signal(notgun.workareas.WorkfileGroup)
+    itemCounterChanged = QtCore.Signal(int)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.cancel_event = threading.Event()
+        self.item_count = 0
+
+    def scan(self, root_workarea: notgun.workareas.WorkArea):
+        logger.debug(f"Starting scan of workarea: {root_workarea.path}")
+        self.cancel_event.clear()
+        for workarea in root_workarea.workareas():
+            self.recursive_scan(workarea)
+
+        logger.debug(
+            f"Workarea scan completed. Found {self.item_count} items in total."
+        )
+
+    def recursive_scan(self, workarea: notgun.workareas.WorkArea):
+        if self.cancel_event.is_set():
+            return
+
+        self.workareaFound.emit(workarea)
+
+        self.iterateItemCount()
+
+        for group in workarea.workfile_groups():
+            self.workfileGroupFound.emit(group)
+            self.iterateItemCount()
+
+        for child in workarea.workareas():
+            self.recursive_scan(child)
+
+    def iterateItemCount(self):
+        self.item_count = self.item_count + 1
+        self.itemCounterChanged.emit(self.item_count)
 
 
-def scan(root_location: notgun.workareas.WorkArea, root_item: QtGui.QStandardItem):
-    for location in root_location.ls():
-        item = WorkAreaItem(location)
-        root_item.appendRow(item)
-        scan(location, item)
+class IconLoaderThread(QtCore.QThread):
+    """
+    Each workarea can have a .metadata directory with a thumbnail.png file.
+    This class checks for this file and loads it if it exists.
+    """
+
+    imageLoaded = QtCore.Signal(str, QtGui.QImage)
+
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.cancel_event = threading.Event()
+        self.work_queue = queue.Queue()
+
+    def run(self):
+        while not self.cancel_event.is_set():
+            try:
+                path = self.work_queue.get(timeout=0.1)
+            except queue.Empty:
+                continue
+
+            thumbnail_path = os.path.join(path, ".metadata", "thumbnail.png")
+            if os.path.exists(thumbnail_path):
+                image = QtGui.QImage(thumbnail_path)
+                self.imageLoaded.emit(path, image)

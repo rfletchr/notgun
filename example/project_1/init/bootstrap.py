@@ -2,9 +2,10 @@ import notgun.projects
 import notgun.templates
 import notgun.launcher
 import notgun.workareas
+import notgun.bootstrap
 
 
-def bootstrap(data) -> notgun.projects.Project:
+def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
     identifier = notgun.templates.Token.identifier()
     version = notgun.templates.Token.integer(padding=3)
 
@@ -24,8 +25,10 @@ def bootstrap(data) -> notgun.projects.Project:
 
     template_defs: dict[str, str] = {
         "project": "{project}",
-        "sequence": "<project>/sequences/{sequence}",
-        "asset_type": "<project>/assets/{asset_type}",
+        "sequences": "<project>/sequences",
+        "sequence": "<sequences>/{sequence}",
+        "assets": "<project>/assets",
+        "asset_type": "<assets>/{asset_type}",
         "shot": "<sequence>/{shot}",
         "asset": "<asset_type>/assets/{asset}",
         "shot_task": "<shot>/work/{task}",
@@ -52,7 +55,7 @@ def bootstrap(data) -> notgun.projects.Project:
         ),
     }
 
-    shot_workarea_type = notgun.workareas.WorkAreaType(
+    shot_workarea_schema = notgun.workareas.ProjectSchema(
         label="Workarea",
         template=templates["shot_workarea"],
         token="app",
@@ -61,37 +64,55 @@ def bootstrap(data) -> notgun.projects.Project:
         icon_name="ph.files-fill",
     )
 
-    shot_task_type = notgun.workareas.WorkAreaType(
+    shot_task_schema = notgun.workareas.ProjectSchema(
         label="Task",
         template=templates["shot_task"],
         token="task",
-        children=[shot_workarea_type],
+        children=[shot_workarea_schema],
         icon_name="ri.todo-line",
     )
-    shot_type = notgun.workareas.WorkAreaType(
+
+    shot_schema = notgun.workareas.ProjectSchema(
         label="Shot",
         template=templates["shot"],
         token="shot",
-        children=[shot_task_type],
+        children=[shot_task_schema],
         icon_name="mdi.filmstrip-box",
     )
-    sequence_type = notgun.workareas.WorkAreaType(
+    sequence_schema = notgun.workareas.ProjectSchema(
         label="Sequence",
         template=templates["sequence"],
         token="sequence",
-        children=[shot_type],
+        children=[shot_schema],
         icon_name="mdi.filmstrip-box-multiple",
     )
-    project_type = notgun.workareas.WorkAreaType(
+
+    sequences_schema = notgun.workareas.ProjectSchema(
+        label="Sequences",
+        template=templates["sequences"],
+        token=None,
+        children=[sequence_schema],
+        icon_name="mdi.filmstrip-box-multiple",
+    )
+
+    assets_schema = notgun.workareas.ProjectSchema(
+        label="Assets",
+        template=templates["assets"],
+        token=None,
+        children=[],
+        icon_name="ph.cubes-fill",
+    )
+
+    project_schema = notgun.workareas.ProjectSchema(
         label="Project",
         template=templates["project"],
         token="project",
-        children=[sequence_type],
+        children=[sequences_schema, assets_schema],
     )
 
     fields = {"project": data.project_name}
     root_workarea = notgun.workareas.WorkArea(
-        project_type,
+        project_schema,
         data.project_name,
         templates["project"].format(fields),
         fields,
