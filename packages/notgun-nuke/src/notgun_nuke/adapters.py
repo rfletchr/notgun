@@ -1,3 +1,4 @@
+import os
 import nuke
 import notgun.adapters
 
@@ -16,6 +17,7 @@ class NukeApplicationAdapter(notgun.adapters.ApplicationAdapter):
         nuke.scriptSave()
 
     def save_as(self, filepath: str):
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
         nuke.scriptSaveAs(filepath)
         root = nuke.root()
         if root:

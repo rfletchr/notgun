@@ -1,4 +1,5 @@
 from __future__ import annotations
+from turtle import st
 import importlib.util
 import os
 import json
@@ -38,6 +39,10 @@ class BootstrapData(typing.NamedTuple):
     projects_dir: str
     project_name: str
     instruction: InstructionTypes | None = None
+
+    @staticmethod
+    def is_in_env():
+        return BOOTSTRAP_ENV_VAR in os.environ
 
     @classmethod
     def from_env(cls):
