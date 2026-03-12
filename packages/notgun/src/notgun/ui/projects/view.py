@@ -1,7 +1,4 @@
-import qtawesome as qta
 from qtpy import QtGui, QtCore, QtWidgets
-
-import notgun.ui.projects.model
 
 
 DEFAULT_SIZE = 128
