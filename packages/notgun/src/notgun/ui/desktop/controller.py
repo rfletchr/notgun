@@ -87,11 +87,11 @@ class DesktopController(QtCore.QObject):
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
             menu = QtWidgets.QMenu()
-            open_in_explorer_action = menu.addAction("Open in File Explorer")
+            open_workfile_action = menu.addAction("Open Workfile")
 
             if action := menu.exec(pos):  # type: ignore
-                if action == open_in_explorer_action:
-                    open_path_in_file_explorer(obj.workfiles[0].path)
+                if action == open_workfile_action:
+                    self.openWorkfileRequested(obj.workfiles[0])
 
     def onNewWorkfileRequested(
         self, workarea: notgun.workareas.WorkArea, pos: QtCore.QPoint | None = None
