@@ -117,6 +117,7 @@ class WorkArea:
 
 @dataclasses.dataclass
 class Workfile:
+    schema: WorkfileSchema
     path: str
     fields: dict[str, int | str]
 
@@ -139,7 +140,7 @@ def workarea_from_path(
 ):
     # if its a full match then we've found the location.
     if fields := root_type.template.fullmatch(path):
-        name = fields[root_type.identity_token]
+        name = fields[root_type.identity_token]  # type: ignore
         return WorkArea(root_type, name, path, fields, parent)
 
     partial_match = root_type.template.match(path)
@@ -148,7 +149,7 @@ def workarea_from_path(
 
     parent = WorkArea(
         root_type,
-        partial_match[root_type.identity_token],
+        partial_match[root_type.identity_token],  # type: ignore
         root_type.template.format(partial_match),
         partial_match,
     )
@@ -188,8 +189,8 @@ def iter_workareas(parent_workarea: WorkArea) -> typing.Iterator[WorkArea]:
 def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileGroup]:
     if not parent_workarea.schema.workfiles:
         return
-    for workfile_type in parent_workarea.schema.workfiles.values():
-        template = workfile_type.template
+    for workfile_schema in parent_workarea.schema.workfiles.values():
+        template = workfile_schema.template
         search_fields = {**parent_workarea.fields}
         search_fields.pop("version", None)
         search_fields.pop("name", None)
@@ -207,7 +208,7 @@ def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileG
             if key not in memo:
                 memo[key] = WorkfileGroup(name, ext, parent=parent_workarea)
 
-            memo[key].workfiles.append(Workfile(path, path_fields))
+            memo[key].workfiles.append(Workfile(workfile_schema, path, path_fields))
 
         for group in memo.values():
             yield group

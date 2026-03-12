@@ -86,7 +86,12 @@ class DesktopController(QtCore.QObject):
                     self.onNewWorkfileRequested(obj, pos=pos)
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
-            pass
+            menu = QtWidgets.QMenu()
+            open_in_explorer_action = menu.addAction("Open in File Explorer")
+
+            if action := menu.exec(pos):  # type: ignore
+                if action == open_in_explorer_action:
+                    open_path_in_file_explorer(obj.workfiles[0].path)
 
     def onNewWorkfileRequested(
         self, workarea: notgun.workareas.WorkArea, pos: QtCore.QPoint | None = None
@@ -109,6 +114,22 @@ class DesktopController(QtCore.QObject):
 
         self.process_info_controller.launchProgram(
             result.workfile_type.program,
+            bootstrap=bootstrap,
+        )
+
+    def openWorkfileRequested(self, workfile: notgun.workareas.Workfile):
+        if not self._active_project:
+            return
+
+        instruction = notgun.bootstrap.OpenFileInstruction(workfile.path)
+        bootstrap = notgun.bootstrap.BootstrapData(
+            self._projects_dir,
+            self._active_project.name(),
+            instruction=instruction,
+        )
+
+        self.process_info_controller.launchProgram(
+            workfile.schema.program,
             bootstrap=bootstrap,
         )
 
