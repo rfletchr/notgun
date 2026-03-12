@@ -16,3 +16,9 @@ class ApplicationAdapter(abc.ABC):
 
     @abc.abstractmethod
     def save_as(self, filepath: str): ...
+
+    @abc.abstractmethod
+    def open(self, filepath: str): ...
+
+    @abc.abstractmethod
+    def new(self): ...

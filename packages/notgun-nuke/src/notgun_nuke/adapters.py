@@ -17,3 +17,9 @@ class NukeApplicationAdapter(notgun.adapters.ApplicationAdapter):
 
     def save_as(self, filepath: str):
         nuke.scriptSaveAs(filepath)
+
+    def open(self, filepath: str):
+        nuke.scriptOpen(filepath)
+
+    def new(self):
+        nuke.scriptNew()
