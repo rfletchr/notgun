@@ -9,4 +9,4 @@ if isinstance(bootstrap.instruction, notgun.bootstrap.NewFileInstruction):
     project.app().save_as(bootstrap.instruction.filepath)
 
 if isinstance(bootstrap.instruction, notgun.bootstrap.OpenFileInstruction):
-    project.app().save_as(bootstrap.instruction.filepath)
+    project.app().open(bootstrap.instruction.filepath)
