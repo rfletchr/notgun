@@ -10,7 +10,6 @@ DEFAULT_SIZE = 128
 class ProjectsView(QtWidgets.QWidget):
     activated = QtCore.Signal(QtCore.QModelIndex)
     clicked = QtCore.Signal(QtCore.QModelIndex)
-    previewSizeChanged = QtCore.Signal(int)
 
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -32,7 +31,3 @@ class ProjectsView(QtWidgets.QWidget):
 
     def setModel(self, model: QtCore.QAbstractItemModel):
         self.view.setModel(model)
-
-    def onSizeSliderChanged(self, value: int):
-        self.item_delegate.setDesiredHeight(value)
-        self.view.reset()
