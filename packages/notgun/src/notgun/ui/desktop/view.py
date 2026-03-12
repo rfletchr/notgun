@@ -3,6 +3,7 @@ from qtpy import QtCore, QtGui, QtWidgets
 import notgun.ui.workareas.view
 import notgun.ui.projects.view
 import notgun.ui.logger.view
+import notgun.ui.process_manager.view
 
 
 class ProjectBrowserView(QtWidgets.QWidget):
@@ -29,26 +30,32 @@ class ProjectBrowserView(QtWidgets.QWidget):
         self.workarea_browser.setModel(model)
 
 
-class LauncherView(QtWidgets.QWidget):
+class DesktopView(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
         self.project_browser = ProjectBrowserView()
         self.logger_view = notgun.ui.logger.view.LogView()
-
+        self.process_info_view = notgun.ui.process_manager.view.ProcessManagerView()
         self.tabs = QtWidgets.QTabWidget()
         self.tabs.setTabPosition(QtWidgets.QTabWidget.TabPosition.West)
         self.tabs.addTab(self.project_browser, "Projects")
         self.tabs.addTab(self.logger_view, "Logs")
+        self.tabs.addTab(self.process_info_view, "Programs")
 
         layout = QtWidgets.QVBoxLayout(self)
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
-    def getWorkareaView(self) -> ProjectBrowserView:
+    def getWorkareaView(self) -> notgun.ui.workareas.view.WorkareasView:
         return self.project_browser.workarea_browser
 
-    def getProjectView(self) -> ProjectBrowserView:
+    def getProjectView(self) -> notgun.ui.projects.view.ProjectsView:
         return self.project_browser.project_browser
 
     def getLoggerView(self) -> notgun.ui.logger.view.LogView:
         return self.logger_view
+
+    def getProcessManagerView(
+        self,
+    ) -> notgun.ui.process_manager.view.ProcessManagerView:
+        return self.process_info_view

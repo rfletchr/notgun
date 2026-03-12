@@ -1,16 +1,20 @@
+from __future__ import annotations
 import logging
+import typing
 from qtpy import QtGui, QtCore, QtWidgets
 
-import notgun.projects
 import notgun.ui.projects.view
 import notgun.ui.projects.model
+
+if typing.TYPE_CHECKING:
+    import notgun.projects
 
 logger = logging.getLogger("notgun.ui.logger.controller")
 
 
 class ProjectsController(QtCore.QObject):
-    projectActivated = QtCore.Signal(notgun.projects.Project)
-    projectClicked = QtCore.Signal(notgun.projects.Project)
+    projectActivated = QtCore.Signal(object)
+    projectClicked = QtCore.Signal(object)
 
     def __init__(
         self,

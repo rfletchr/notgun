@@ -46,71 +46,76 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
 
     programs = {
         "nuke": notgun.launcher.Program(
-            "Nuke",
-            "rez",
-            ["env", "notgun-nuke", "--", "nuke"],
+            "Nuke", "rez", ["env", "notgun-nuke", "--", "nuke"], ["nk"]
         ),
         "maya": notgun.launcher.Program(
-            "Maya", "rez", ["env", "notgun-maya", "--", "maya"]
+            "Maya", "rez", ["env", "notgun-maya", "--", "maya"], ["ma", "mb"]
         ),
     }
 
-    shot_workarea_schema = notgun.workareas.ProjectSchema(
+    shot_workfile = notgun.workareas.WorkfileSchema(
+        templates["shot_workfile"],
+        programs["nuke"],
+        "{shot}_{task}",
+        "nk",
+    )
+
+    shot_workarea_schema = notgun.workareas.WorkareaSchema(
         label="Workarea",
         template=templates["shot_workarea"],
-        token="app",
-        children=[],
-        workfiles_template=templates["shot_workfile"],
+        identity_token="app",
+        workareas=[],
+        workfiles={"nuke": shot_workfile},
         icon_name="ph.files-fill",
     )
 
-    shot_task_schema = notgun.workareas.ProjectSchema(
+    shot_task_schema = notgun.workareas.WorkareaSchema(
         label="Task",
         template=templates["shot_task"],
-        token="task",
-        children=[shot_workarea_schema],
+        identity_token="task",
+        workareas=[shot_workarea_schema],
         icon_name="ri.todo-line",
     )
 
-    shot_schema = notgun.workareas.ProjectSchema(
+    shot_schema = notgun.workareas.WorkareaSchema(
         label="Shot",
         template=templates["shot"],
-        token="shot",
-        children=[shot_task_schema],
+        identity_token="shot",
+        workareas=[shot_task_schema],
         icon_name="mdi.filmstrip-box",
     )
-    sequence_schema = notgun.workareas.ProjectSchema(
+    sequence_schema = notgun.workareas.WorkareaSchema(
         label="Sequence",
         template=templates["sequence"],
-        token="sequence",
-        children=[shot_schema],
+        identity_token="sequence",
+        workareas=[shot_schema],
         icon_name="mdi.filmstrip-box-multiple",
     )
 
-    sequences_schema = notgun.workareas.ProjectSchema(
+    sequences_schema = notgun.workareas.WorkareaSchema(
         label="Sequences",
         template=templates["sequences"],
-        token=None,
-        children=[sequence_schema],
+        identity_token=None,
+        workareas=[sequence_schema],
         icon_name="mdi.filmstrip-box-multiple",
     )
 
-    assets_schema = notgun.workareas.ProjectSchema(
+    assets_schema = notgun.workareas.WorkareaSchema(
         label="Assets",
         template=templates["assets"],
-        token=None,
-        children=[],
+        identity_token=None,
+        workareas=[],
         icon_name="ph.cubes-fill",
     )
 
-    project_schema = notgun.workareas.ProjectSchema(
+    project_schema = notgun.workareas.WorkareaSchema(
         label="Project",
         template=templates["project"],
-        token="project",
-        children=[sequences_schema, assets_schema],
+        identity_token="project",
+        workareas=[sequences_schema, assets_schema],
     )
 
-    fields = {"project": data.project_name}
+    fields: dict[str, str | int] = {"project": data.project_name}
     root_workarea = notgun.workareas.WorkArea(
         project_schema,
         data.project_name,

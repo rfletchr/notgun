@@ -21,7 +21,7 @@ class MainController:
             self.view.projects_view,
         )
 
-        self.workareas_controller = notgun.ui.workareas.controller.WorkAreaController(
+        self.workareas_controller = notgun.ui.workareas.controller.WorkareasController(
             self.view.work_areas_container.workareas_view,
         )
 

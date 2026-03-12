@@ -1,27 +1,63 @@
+from __future__ import annotations
 import importlib.util
 import os
 import json
 import typing
 
-import notgun.projects
+if typing.TYPE_CHECKING:
+    import notgun.projects
 
 BOOTSTRAP_ENV_VAR = "NOTGUN_BOOTSTRAP_PAYLOAD"
+
+
+class OpenFileInstruction(typing.NamedTuple):
+    file_path: str
+
+    def to_dict(self):
+        return {"file_path": self.file_path, "type": "open_file"}
+
+
+class NewFileInstruction(typing.NamedTuple):
+    file_path: str
+
+    def to_dict(self):
+        return {"file_path": self.file_path, "type": "new_file"}
+
+
+InstructionTypes = OpenFileInstruction | NewFileInstruction
+
+
+def instruction_factory(data: dict) -> InstructionTypes | None:
+    instruction_type = data.get("type")
+    if instruction_type == "open_file":
+        return OpenFileInstruction(file_path=data["file_path"])
+    elif instruction_type == "new_file":
+        return NewFileInstruction(file_path=data["file_path"])
 
 
 class BootstrapData(typing.NamedTuple):
     projects_dir: str
     project_name: str
+    instruction: InstructionTypes | None = None
 
     @classmethod
     def from_env(cls):
         payload = os.environ[BOOTSTRAP_ENV_VAR]
         data = json.loads(payload)
-        return cls(data["projects_dir"], data["project_name"])
+
+        instruction = (
+            instruction_factory(data["instruction"])
+            if data.get("instruction")
+            else None
+        )
+
+        return cls(data["projects_dir"], data["project_name"], instruction=instruction)
 
     def to_dict(self):
         return {
             "projects_dir": self.projects_dir,
             "project_name": self.project_name,
+            "instruction": self.instruction.to_dict() if self.instruction else None,
         }
 
     def to_json_str(self) -> str:

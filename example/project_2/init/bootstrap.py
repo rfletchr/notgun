@@ -1,11 +1,11 @@
 import notgun.projects
 import notgun.templates
 import notgun.launcher
-import notgun.bootstrap
 import notgun.workareas
+import notgun.bootstrap
 
 
-def bootstrap(data) -> notgun.projects.Project:
+def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
     identifier = notgun.templates.Token.identifier()
     version = notgun.templates.Token.integer(padding=3)
 
@@ -25,8 +25,10 @@ def bootstrap(data) -> notgun.projects.Project:
 
     template_defs: dict[str, str] = {
         "project": "{project}",
-        "sequence": "<project>/sequences/{sequence}",
-        "asset_type": "<project>/assets/{asset_type}",
+        "sequences": "<project>/sequences",
+        "sequence": "<sequences>/{sequence}",
+        "assets": "<project>/assets",
+        "asset_type": "<assets>/{asset_type}",
         "shot": "<sequence>/{shot}",
         "asset": "<asset_type>/assets/{asset}",
         "shot_task": "<shot>/work/{task}",
@@ -44,51 +46,78 @@ def bootstrap(data) -> notgun.projects.Project:
 
     programs = {
         "nuke": notgun.launcher.Program(
-            "Nuke",
-            "rez",
-            ["env", "notgun-nuke", "--", "nuke"],
+            "Nuke", "rez", ["env", "notgun-nuke", "--", "nuke"], ["nk"]
         ),
         "maya": notgun.launcher.Program(
-            "Maya", "rez", ["env", "notgun-maya", "--", "maya"]
+            "Maya", "rez", ["env", "notgun-maya", "--", "maya"], ["ma", "mb"]
         ),
     }
 
-    workarea_type = notgun.workareas.ProjectSchema(
+    shot_workfile = notgun.workareas.WorkfileSchema(
+        template=templates["shot_workfile"],
+        programs=[programs["nuke"]],
+        default_name="{shot}_{task}",
+        default_extension="nk",
+    )
+
+    shot_workarea_schema = notgun.workareas.WorkareaSchema(
         label="Workarea",
         template=templates["shot_workarea"],
         token="app",
-        children=[],
-        workfiles_template=templates["shot_workfile"],
+        workareas=[],
+        workfile=shot_workfile,
+        icon_name="ph.files-fill",
     )
 
-    task_type = notgun.workareas.ProjectSchema(
+    shot_task_schema = notgun.workareas.WorkareaSchema(
         label="Task",
         template=templates["shot_task"],
         token="task",
-        children=[workarea_type],
+        workareas=[shot_workarea_schema],
+        icon_name="ri.todo-line",
     )
-    shot_type = notgun.workareas.ProjectSchema(
+
+    shot_schema = notgun.workareas.WorkareaSchema(
         label="Shot",
         template=templates["shot"],
         token="shot",
-        children=[task_type],
+        workareas=[shot_task_schema],
+        icon_name="mdi.filmstrip-box",
     )
-    sequence_type = notgun.workareas.ProjectSchema(
+    sequence_schema = notgun.workareas.WorkareaSchema(
         label="Sequence",
         template=templates["sequence"],
         token="sequence",
-        children=[shot_type],
+        workareas=[shot_schema],
+        icon_name="mdi.filmstrip-box-multiple",
     )
-    project_type = notgun.workareas.ProjectSchema(
+
+    sequences_schema = notgun.workareas.WorkareaSchema(
+        label="Sequences",
+        template=templates["sequences"],
+        token=None,
+        workareas=[sequence_schema],
+        icon_name="mdi.filmstrip-box-multiple",
+    )
+
+    assets_schema = notgun.workareas.WorkareaSchema(
+        label="Assets",
+        template=templates["assets"],
+        token=None,
+        workareas=[],
+        icon_name="ph.cubes-fill",
+    )
+
+    project_schema = notgun.workareas.WorkareaSchema(
         label="Project",
         template=templates["project"],
         token="project",
-        children=[sequence_type],
+        workareas=[sequences_schema, assets_schema],
     )
 
-    fields = {"project": data.project_name}
-    root_location = notgun.workareas.WorkArea(
-        project_type,
+    fields: dict[str, str | int] = {"project": data.project_name}
+    root_workarea = notgun.workareas.WorkArea(
+        project_schema,
         data.project_name,
         templates["project"].format(fields),
         fields,
@@ -100,5 +129,5 @@ def bootstrap(data) -> notgun.projects.Project:
         templates,
         notgun.projects.DEFAULT_CONTEXT_NAMES,
         programs,
-        root_location,
+        root_workarea,
     )

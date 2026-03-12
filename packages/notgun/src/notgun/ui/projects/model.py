@@ -1,3 +1,5 @@
+from __future__ import annotations
+import logging
 import typing
 import os
 
@@ -5,6 +7,8 @@ from qtpy import QtGui, QtCore
 
 import notgun.bootstrap
 import notgun.projects
+
+logger = logging.getLogger(__name__)
 
 
 class ProjectsModel(QtGui.QStandardItemModel):
@@ -49,5 +53,5 @@ def iter_projects(projects_dir: str) -> typing.Iterator[notgun.projects.Project]
                 project = notgun.bootstrap.init(data)
                 yield project
             except Exception:
-                # TODO: log this error
+                logger.exception(f"Failed to initialize project {name}")
                 continue

@@ -22,6 +22,15 @@ class ItemType(enum.IntEnum):
     WorkfileGroup = 1
 
 
+class WorkareaFilterModel(QtCore.QSortFilterProxyModel):
+    def __init__(self, parent=None):
+        super().__init__(parent=parent)
+        self.setFilterCaseSensitivity(QtCore.Qt.CaseSensitivity.CaseInsensitive)
+        self.setFilterRole(ModelRole.Path)
+        self.setRecursiveFilteringEnabled(True)
+        self.setDynamicSortFilter(True)
+
+
 class WorkAreaModel(QtGui.QStandardItemModel):
     # this signal forwards the scan request to the background thread.
     __sendToThreadSignal = QtCore.Signal(notgun.workareas.WorkArea)
@@ -105,11 +114,16 @@ class WorkAreaModel(QtGui.QStandardItemModel):
         self.__icon_loader_thread.work_queue.put(workarea.path)
 
     def onWorkfileGroupFound(self, group: notgun.workareas.WorkfileGroup):
+        if group.parent is None:
+            logger.warning(
+                f"WorkfileGroup {group.name} has no parent. This should not happen."
+            )
+            return
 
         parent_item = self.__path_to_item[group.parent.path]
 
         parent_path = parent_item.data(ModelRole.Path)
-        path = os.path.join(parent_path, group.name + "." + group.ext)
+        path = os.path.join(parent_path, group.name + "." + group.filetype)
 
         item = QtGui.QStandardItem(os.path.basename(path))
         item.setEditable(False)
