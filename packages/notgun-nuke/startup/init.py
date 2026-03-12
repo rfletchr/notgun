@@ -8,7 +8,7 @@ project = notgun.bootstrap.init(bootstrap, make_current=True)
 project.set_app(notgun_nuke.adapters.NukeApplicationAdapter())
 
 if isinstance(bootstrap.instruction, notgun.bootstrap.NewFileInstruction):
-    project.app().open(bootstrap.instruction.filepath)
+    project.app().save_as(bootstrap.instruction.filepath)
 
 if isinstance(bootstrap.instruction, notgun.bootstrap.OpenFileInstruction):
     project.app().open(bootstrap.instruction.filepath)
