@@ -86,7 +86,7 @@ def init(data: BootstrapData, make_current: bool = False) -> notgun.projects.Pro
     if pipeline and make_current:
         notgun.projects.set_current(pipeline)
 
-    return pipeline
+    return pipeline, data
 
 
 def init_from_env(make_current: bool = True) -> notgun.projects.Project:
