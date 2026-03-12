@@ -62,6 +62,10 @@ class BootstrapData(typing.NamedTuple):
     def to_json_str(self) -> str:
         return json.dumps(self.to_dict())
 
+    def clear_env(self):
+        if BOOTSTRAP_ENV_VAR in os.environ:
+            del os.environ[BOOTSTRAP_ENV_VAR]
+
 
 def has_bootstrap(projects_dir: str, project_name: str) -> bool:
     bootstrap_file = os.path.join(projects_dir, project_name, "init", "bootstrap.py")

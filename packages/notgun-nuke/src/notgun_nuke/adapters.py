@@ -17,6 +17,14 @@ class NukeApplicationAdapter(notgun.adapters.ApplicationAdapter):
 
     def save_as(self, filepath: str):
         nuke.scriptSaveAs(filepath)
+        root = nuke.root()
+        if root:
+            knob = nuke.root().knob("name")
+        else:
+            knob = None
+
+        if root and knob:
+            knob.setValue(filepath)
 
     def open(self, filepath: str):
         nuke.scriptOpen(filepath)
