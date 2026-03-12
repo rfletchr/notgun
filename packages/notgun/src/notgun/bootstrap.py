@@ -10,17 +10,17 @@ BOOTSTRAP_ENV_VAR = "NOTGUN_BOOTSTRAP_PAYLOAD"
 
 
 class OpenFileInstruction(typing.NamedTuple):
-    file_path: str
+    filepath: str
 
     def to_dict(self):
-        return {"file_path": self.file_path, "type": "open_file"}
+        return {"file_path": self.filepath, "type": "open_file"}
 
 
 class NewFileInstruction(typing.NamedTuple):
-    file_path: str
+    filepath: str
 
     def to_dict(self):
-        return {"file_path": self.file_path, "type": "new_file"}
+        return {"file_path": self.filepath, "type": "new_file"}
 
 
 InstructionTypes = OpenFileInstruction | NewFileInstruction
@@ -29,9 +29,9 @@ InstructionTypes = OpenFileInstruction | NewFileInstruction
 def instruction_factory(data: dict) -> InstructionTypes | None:
     instruction_type = data.get("type")
     if instruction_type == "open_file":
-        return OpenFileInstruction(file_path=data["file_path"])
+        return OpenFileInstruction(data["filepath"])
     elif instruction_type == "new_file":
-        return NewFileInstruction(file_path=data["file_path"])
+        return NewFileInstruction(data["filepath"])
 
 
 class BootstrapData(typing.NamedTuple):
