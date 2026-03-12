@@ -1,7 +1,8 @@
+
 import notgun.bootstrap
 import notgun_nuke.adapters
 
-if not notgun.bootstrap.BootstrapData.is_in_env():
+if notgun.bootstrap.BootstrapData.is_in_env():
     bootstrap = notgun.bootstrap.BootstrapData.from_env()
     bootstrap.clear_env()
 
