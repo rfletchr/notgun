@@ -13,14 +13,14 @@ class OpenFileInstruction(typing.NamedTuple):
     filepath: str
 
     def to_dict(self):
-        return {"file_path": self.filepath, "type": "open_file"}
+        return {"filepath": self.filepath, "type": "open_file"}
 
 
 class NewFileInstruction(typing.NamedTuple):
     filepath: str
 
     def to_dict(self):
-        return {"file_path": self.filepath, "type": "new_file"}
+        return {"filepath": self.filepath, "type": "new_file"}
 
 
 InstructionTypes = OpenFileInstruction | NewFileInstruction
