@@ -1,4 +1,3 @@
-from keyring.backend import log
 import os
 import argparse
 import dataclasses
