@@ -4,8 +4,7 @@ import os
 import json
 import typing
 
-if typing.TYPE_CHECKING:
-    import notgun.projects
+import notgun.projects
 
 BOOTSTRAP_ENV_VAR = "NOTGUN_BOOTSTRAP_PAYLOAD"
 
