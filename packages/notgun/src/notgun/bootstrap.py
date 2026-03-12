@@ -87,8 +87,3 @@ def init(data: BootstrapData, make_current: bool = False) -> notgun.projects.Pro
         notgun.projects.set_current(pipeline)
 
     return pipeline
-
-
-def init_from_env(make_current: bool = True) -> notgun.projects.Project:
-    data = BootstrapData.from_env()
-    return init(data, make_current=make_current)
