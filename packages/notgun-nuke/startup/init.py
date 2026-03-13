@@ -1,9 +1,9 @@
-
 import nuke
 import notgun.bootstrap
 import notgun_nuke.adapters
 
 from PySide6 import QtCore, QtWidgets
+
 
 class DefferredInstructionHandler(QtCore.QObject):
     def __init__(self, instruction: notgun.bootstrap.InstructionTypes, parent=None):
@@ -25,6 +25,7 @@ class DefferredInstructionHandler(QtCore.QObject):
             nuke.scriptClear()
             nuke.scriptOpen(self.instruction.filepath)
 
+
 if notgun.bootstrap.BootstrapData.is_in_env():
     print("Bootstrap data found in environment, initializing project...")
     bootstrap = notgun.bootstrap.BootstrapData.from_env()
@@ -37,5 +38,3 @@ if notgun.bootstrap.BootstrapData.is_in_env():
 
     setattr(nuke, "_notgun_deferred_instruction_handler", handler)
     handler.start()
-
-

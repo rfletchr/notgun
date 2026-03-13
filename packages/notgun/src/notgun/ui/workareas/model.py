@@ -7,7 +7,6 @@ from qtpy import QtCore, QtGui, QtWidgets
 
 import notgun.workareas
 
-
 logger = logging.getLogger(__name__)
 
 

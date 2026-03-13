@@ -194,7 +194,7 @@ def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileG
         search_fields = {**parent_workarea.fields}
         search_fields.pop("version", None)
         search_fields.pop("name", None)
-        search_fields.pop("ext", None)
+        search_fields.pop("extension", None)
 
         memo = dict[tuple[str, str], WorkfileGroup]()
         for path in sorted(template.glob(search_fields)):
@@ -203,7 +203,7 @@ def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileG
                 continue
 
             name = path_fields["name"]
-            ext = path_fields["ext"]
+            ext = path_fields["extension"]
             key = (name, ext)
             if key not in memo:
                 memo[key] = WorkfileGroup(name, ext, parent=parent_workarea)

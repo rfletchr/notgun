@@ -134,7 +134,8 @@ class NewWorkfileController(QtCore.QObject):
             raise ValueError("No workfile name set")
 
         version = self._active_workarea.next_workfile_version(
-            self._workfile_name, self._workfile_type.extension
+            self._workfile_name,
+            self._workfile_type.extension,
         )
         fields = self._active_workarea.fields.copy()
         fields["name"] = self._workfile_name
@@ -170,7 +171,9 @@ class NewWorkfileDialog(QtWidgets.QDialog):
 
     @classmethod
     def pickFromWorkarea(
-        cls, workarea: notgun.workareas.WorkArea, parent=None
+        cls,
+        workarea: notgun.workareas.WorkArea,
+        parent: QtWidgets.QWidget | None = None,
     ) -> NewWorkfileResult | None:
         dialog = cls(parent=parent)
         controller = NewWorkfileController(view=dialog.view)

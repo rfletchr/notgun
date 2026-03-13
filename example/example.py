@@ -2,7 +2,6 @@ import os
 import notgun.bootstrap
 import notgun.workareas
 
-
 projects_dir = os.path.dirname(__file__)
 project_name = "project_1"
 

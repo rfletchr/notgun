@@ -9,7 +9,6 @@ import notgun.launcher
 import notgun.ui.process_manager.view
 import notgun.ui.process_manager.model
 
-
 logger = logging.getLogger(__name__)
 
 

@@ -2,6 +2,7 @@ import os
 import platform
 import subprocess
 import logging
+import typing
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -27,17 +28,20 @@ class DesktopController(QtCore.QObject):
         self,
         projects_dir: str,
         view: notgun.ui.desktop.view.DesktopView | None = None,
-        parent=None,
+        parent: QtWidgets.QWidget | None = None,
     ):
         super().__init__(parent=parent)
-        self._projects_dir = projects_dir
+        self._projects_dir: str = projects_dir
         self._active_project: notgun.projects.Project | None = None
 
-        self.view = view or notgun.ui.desktop.view.DesktopView()
+        self.view: notgun.ui.desktop.view.DesktopView = (
+            view or notgun.ui.desktop.view.DesktopView()
+        )
 
         self.project_controller = notgun.ui.projects.controller.ProjectsController(
             view=self.view.getProjectView()
         )
+
         self.workarea_controller = notgun.ui.workareas.controller.WorkareasController(
             view=self.view.getWorkareaView()
         )
@@ -83,19 +87,25 @@ class DesktopController(QtCore.QObject):
                 if action == open_in_explorer_action:
                     open_path_in_file_explorer(obj.path)
                 elif action == new_workfile_action:
-                    self.onNewWorkfileRequested(obj, pos=pos)
+                    self.onNewWorkfileRequested(obj)
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
             menu = QtWidgets.QMenu()
             open_workfile_action = menu.addAction("Open Workfile")
+            open_workfile_action.triggered.connect(
+                lambda w=obj: self.openWorkfileRequested(w.workfiles[-1])
+            )
 
-            if action := menu.exec(pos):  # type: ignore
-                if action == open_workfile_action:
-                    self.openWorkfileRequested(obj.workfiles[0])
+            if len(obj.workfiles) > 1:
+                sub_menu = menu.addMenu("Open Version")
+                for workfile in obj.workfiles:
+                    f = lambda w=workfile: self.openWorkfileRequested(w)
+                    label = os.path.basename(workfile.path)
+                    sub_menu.addAction(label).triggered.connect(f)
 
-    def onNewWorkfileRequested(
-        self, workarea: notgun.workareas.WorkArea, pos: QtCore.QPoint | None = None
-    ):
+            menu.exec(pos)
+
+    def onNewWorkfileRequested(self, workarea: notgun.workareas.WorkArea):
         if not workarea.schema.workfiles:
             return
         if not self._active_project:
@@ -136,11 +146,11 @@ class DesktopController(QtCore.QObject):
 
 def open_path_in_file_explorer(path: str):
     if platform.system() == "Windows":
-        subprocess.run(["explorer", path])
+        _ = subprocess.run(["explorer", path])
     elif platform.system() == "Darwin":  # macOS
-        subprocess.run(["open", path])
+        _ = subprocess.run(["open", path])
     else:  # Linux and other Unix-like systems
-        subprocess.run(["xdg-open", path])
+        _ = subprocess.run(["xdg-open", path])
 
 
 if __name__ == "__main__":

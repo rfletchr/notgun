@@ -20,7 +20,7 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
         "app": identifier,
         "name": identifier,
         "version": version,
-        "ext": identifier,
+        "extension": identifier,
     }
 
     template_defs: dict[str, str] = {
@@ -33,7 +33,7 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
         "asset": "<asset_type>/assets/{asset}",
         "shot_task": "<shot>/work/{task}",
         "shot_workarea": "<shot_task>/{app}",
-        "shot_workfile": "<shot_workarea>/{name}.v{version}.{ext}",
+        "shot_workfile": "<shot_workarea>/{name}.v{version}.{extension}",
         "asset_task": "<asset>/tasks/{task}",
         "asset_workarea": "<asset_task>/{app}",
     }

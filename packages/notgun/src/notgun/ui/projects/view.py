@@ -1,6 +1,5 @@
 from qtpy import QtGui, QtCore, QtWidgets
 
-
 DEFAULT_SIZE = 128
 
 
