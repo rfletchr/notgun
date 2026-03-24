@@ -9,26 +9,6 @@ import notgun.workareas
 if typing.TYPE_CHECKING:
     import notgun.launcher
 
-EPISODIC_CONTEXT_NAMES = (
-    "project",
-    "episode",
-    "sequence",
-    "asset_type",
-    "shot",
-    "asset",
-    "shot_task",
-    "asset_task",
-)
-
-DEFAULT_CONTEXT_NAMES = (
-    "project",
-    "sequence",
-    "asset_type",
-    "shot",
-    "asset",
-    "shot_task",
-    "asset_task",
-)
 
 __CURRENT_PIPELINE: "Project|None" = None
 

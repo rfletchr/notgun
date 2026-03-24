@@ -92,9 +92,6 @@ class DesktopController(QtCore.QObject):
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
             menu = QtWidgets.QMenu()
             open_workfile_action = menu.addAction("Open Workfile")
-            open_workfile_action.triggered.connect(
-                lambda w=obj: self.openWorkfileRequested(w.workfiles[-1])
-            )
 
             if len(obj.workfiles) > 1:
                 sub_menu = menu.addMenu("Open Version")

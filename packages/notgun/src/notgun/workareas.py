@@ -8,50 +8,10 @@ if typing.TYPE_CHECKING:
     import notgun.launcher
 
 
-@dataclasses.dataclass
-class WorkareaSchema:
-    """
-    Attributes:
-        label: The display name for this workarea type.
-        template: The path template that defines the structure of this workarea.
-        identity_token: The name of the token in the template that identifies this workarea.
-        workareas: A list of child workarea schemas that can exist within this workarea.
-        workfiles: A mapping of workfile type to workfile schemas that can exist within this workarea.
-        icon_name: The name of the icon to represent this workarea in the UI
-    """
-
-    label: str
-    template: notgun.templates.PathTemplate
-    identity_token: str | None = None
-    workareas: list[WorkareaSchema] = dataclasses.field(default_factory=list)
-    workfiles: dict[str, WorkfileSchema] = dataclasses.field(default_factory=dict)
-    icon_name: str = "fa6s.folder"
-
-
-@dataclasses.dataclass
-class WorkfileSchema:
-    """
-    Attributes:
-        template: The path template that defines the structure of workfiles of this type.
-        program: The program that should be launched to open workfiles of this type.
-        naming_pattern: the naming pattern for files of this type.
-        extension: the file extension for files of this type.
-        name_is_editable: whether the name should be user editable when creating a new workfile of this type.
-        validation_regex: a regular expression to validate the name of the workfile.
-    """
-
-    template: notgun.templates.PathTemplate
-    program: notgun.launcher.Program
-    naming_pattern: str
-    extension: str
-    name_is_editable: bool = False
-    validation_regex: str = r"^[a-zA-Z][a-zA-Z0-9]+(_[a-zA-Z0-9]+)?$"
-
-
 class WorkArea:
     def __init__(
         self,
-        schema: WorkareaSchema,
+        schema: notgun.schema.WorkareaSchema,
         name: str,
         path: str,
         fields: dict[str, int | str],
@@ -66,7 +26,7 @@ class WorkArea:
         self._workfile_groups: list[WorkfileGroup] | None = None
 
     @property
-    def schema(self) -> WorkareaSchema:
+    def schema(self) -> notgun.schema.WorkareaSchema:
         return self._schema
 
     @property
@@ -117,9 +77,10 @@ class WorkArea:
 
 @dataclasses.dataclass
 class Workfile:
-    schema: WorkfileSchema
+    schema: notgun.schema.WorkfileSchema
     path: str
     fields: dict[str, int | str]
+    group: WorkfileGroup
 
     def version(self) -> int:
         return int(self.fields["version"])
@@ -135,7 +96,7 @@ class WorkfileGroup:
 
 def workarea_from_path(
     path: str,
-    root_type: WorkareaSchema,
+    root_type: notgun.schema.WorkareaSchema,
     parent: WorkArea | None = None,
 ):
     # if its a full match then we've found the location.
@@ -208,7 +169,8 @@ def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileG
             if key not in memo:
                 memo[key] = WorkfileGroup(name, ext, parent=parent_workarea)
 
-            memo[key].workfiles.append(Workfile(workfile_schema, path, path_fields))
+            group = memo[key]
+            group.workfiles.append(Workfile(workfile_schema, path, path_fields, group))
 
         for group in memo.values():
             yield group
