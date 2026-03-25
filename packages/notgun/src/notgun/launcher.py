@@ -98,8 +98,12 @@ def launch_program(
 
 
 def launch_in_watchdog(
-    label: str, cmd: list[str], env: dict[str, str], log_directory: str, cwd: str
-):
+    label: str,
+    cmd: list[str],
+    env: dict[str, str],
+    log_directory: str,
+    cwd: str,
+) -> bool:
     with tempfile.NamedTemporaryFile("w", delete=False) as spec_fh:
         json.dump(
             {

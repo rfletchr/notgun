@@ -1,8 +1,12 @@
+import time
+import queue
+
 from qtpy import QtCore, QtGui, QtWidgets
 
 import notgun.workareas
 import notgun.ui.workareas.view
 import notgun.ui.workareas.model
+import notgun.ui.deferred_item_model
 
 
 class WorkareasController(QtCore.QObject):
@@ -16,7 +20,7 @@ class WorkareasController(QtCore.QObject):
         parent=None,
     ):
         super().__init__(parent=parent)
-        self.model = notgun.ui.workareas.model.WorkAreaModel()
+        self.model = notgun.ui.deferred_item_model.DeferredItemModel()
 
         self.proxy_model = notgun.ui.workareas.model.WorkareaFilterModel()
         self.proxy_model.setSourceModel(self.model)
@@ -29,10 +33,22 @@ class WorkareasController(QtCore.QObject):
         self.view = view or notgun.ui.workareas.view.WorkareasView()
         self.view.setModel(self.proxy_model)
 
+        self.scanner_queue = queue.Queue[notgun.workareas.WorkArea]()
+        self.scanner_thread = WorkareaScannerThread(self.scanner_queue)
+        self.scanner_thread.workareaScanned.connect(self.onWorkareaScanned)
+        self.scanner_thread.start()
+
         self.view.itemClicked.connect(self.onItemClicked)
         self.view.itemActivated.connect(self.onItemActivated)
         self.view.searchTextChanged.connect(self.onSearchTextChanged)
         self.view.contextMenuRequested.connect(self.onContextMenuRequested)
+
+    def onWorkareaScanned(self, path: str):
+        item = self.model.itemById(path)
+        if not item:
+            return
+
+        item.fetch()
 
     def onSearchTextChanged(self, text: str):
         self.search_query = text
@@ -45,10 +61,13 @@ class WorkareasController(QtCore.QObject):
 
     def populate(self, root_workarea: notgun.workareas.WorkArea):
         self.model.clear()
-        self.model.scan(root_workarea)
+        item = notgun.ui.workareas.model.WorkareaModelItem(root_workarea)
+        self.model.appendRow(item)
+        # self.scanner_queue.put_nowait(root_workarea)
 
     def shutdown(self):
-        self.model.shutdown()
+        self.scanner_thread.requestInterruption()
+        self.scanner_thread.wait(2)
 
     def onItemClicked(self, proxy_index: QtCore.QModelIndex):
         index = self.proxy_model.mapToSource(proxy_index)
@@ -83,6 +102,47 @@ class WorkareasController(QtCore.QObject):
         data = item.data(notgun.ui.workareas.model.ModelRole.Data)
         if data is not None:
             self.contextMenuRequested.emit(global_pos, data)
+
+
+class WorkareaScannerThread(QtCore.QThread):
+    """
+    Consumes workareas from the given Queue and walks their children.
+    Each walked workareas path is emitted so that a model can be notified to update.
+    """
+
+    workareaScanned = QtCore.Signal(str)  # type: ignore
+
+    def __init__(self, work_queue: queue.Queue[notgun.workareas.WorkArea], parent=None):
+        super().__init__(parent=parent)
+        self.work_queue = work_queue
+
+    def run(self):
+        while not self.isInterruptionRequested():
+            try:
+                workarea = self.work_queue.get_nowait()
+            except queue.Empty:
+                continue
+
+            for workarea in populate_workarea(workarea):
+                self.workareaScanned.emit(workarea.path)
+
+            time.sleep(1)
+
+
+def populate_workarea(root: notgun.workareas.WorkArea):
+    """
+    This helper function recursively walks down a workarea tree and loads its children.
+    yielding the workareas as they're loaded.
+
+
+    """
+    children = root.workareas()
+    root.workfile_groups()
+
+    yield root
+
+    for child in children:
+        yield from populate_workarea(child)
 
 
 class NewFileController(QtCore.QObject):

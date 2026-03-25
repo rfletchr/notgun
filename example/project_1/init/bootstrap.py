@@ -3,6 +3,7 @@ import notgun.templates
 import notgun.launcher
 import notgun.workareas
 import notgun.bootstrap
+import notgun.schema
 
 
 def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
@@ -46,74 +47,52 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
 
     programs = {
         "nuke": notgun.launcher.Program(
-            "Nuke", "rez", ["env", "notgun-nuke", "--", "nuke"], ["nk"]
-        ),
-        "maya": notgun.launcher.Program(
-            "Maya", "rez", ["env", "notgun-maya", "--", "maya"], ["ma", "mb"]
+            "Nuke",
+            "rez",
+            ["env", "notgun_nuke", "--", "nuke"],
+            ["nk"],
         ),
     }
 
-    shot_workfile = notgun.workareas.WorkfileSchema(
+    project_schema = notgun.schema.WorkareaSchema(
+        label="Project",
+        template=templates["project"],
+        identity_token="project",
+    )
+
+    sequences_schema = project_schema.add_child(
+        "Sequences",
+        templates["sequences"],
+    )
+    sequence_schema = sequences_schema.add_child(
+        "Sequence",
+        templates["sequence"],
+        identity_token="sequence",
+    )
+    shot_schema = sequence_schema.add_child(
+        "Shot",
+        templates["shot"],
+        identity_token="shot",
+    )
+    shot_task_schema = shot_schema.add_child(
+        "Task",
+        templates["shot_task"],
+        identity_token="task",
+    )
+    shot_workarea_schema = shot_task_schema.add_child(
+        "Workarea",
+        templates["shot_workarea"],
+        identity_token="app",
+    )
+    shot_workarea_schema.add_workfile(
+        "nuke",
         templates["shot_workfile"],
         programs["nuke"],
         "{shot}_{task}",
         "nk",
     )
 
-    shot_workarea_schema = notgun.workareas.WorkareaSchema(
-        label="Workarea",
-        template=templates["shot_workarea"],
-        identity_token="app",
-        workareas=[],
-        workfiles={"nuke": shot_workfile},
-        icon_name="ph.files-fill",
-    )
-
-    shot_task_schema = notgun.workareas.WorkareaSchema(
-        label="Task",
-        template=templates["shot_task"],
-        identity_token="task",
-        workareas=[shot_workarea_schema],
-        icon_name="ri.todo-line",
-    )
-
-    shot_schema = notgun.workareas.WorkareaSchema(
-        label="Shot",
-        template=templates["shot"],
-        identity_token="shot",
-        workareas=[shot_task_schema],
-        icon_name="mdi.filmstrip-box",
-    )
-    sequence_schema = notgun.workareas.WorkareaSchema(
-        label="Sequence",
-        template=templates["sequence"],
-        identity_token="sequence",
-        workareas=[shot_schema],
-        icon_name="mdi.filmstrip-box-multiple",
-    )
-
-    sequences_schema = notgun.workareas.WorkareaSchema(
-        label="Sequences",
-        template=templates["sequences"],
-        identity_token=None,
-        workareas=[sequence_schema],
-        icon_name="mdi.filmstrip-box-multiple",
-    )
-
-    assets_schema = notgun.workareas.WorkareaSchema(
-        label="Assets",
-        template=templates["assets"],
-        identity_token=None,
-        workareas=[],
-        icon_name="ph.cubes-fill",
-    )
-
-    project_schema = notgun.workareas.WorkareaSchema(
-        label="Project",
-        template=templates["project"],
-        identity_token="project",
-        workareas=[sequences_schema, assets_schema],
-    )
+    project_schema.add_child("Assets", templates["assets"])
 
     fields: dict[str, str | int] = {"project": data.project_name}
     root_workarea = notgun.workareas.WorkArea(
@@ -127,7 +106,6 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
         data.projects_dir,
         data.project_name,
         templates,
-        notgun.projects.DEFAULT_CONTEXT_NAMES,
         programs,
         root_workarea,
     )

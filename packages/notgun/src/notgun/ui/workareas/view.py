@@ -1,5 +1,4 @@
 from qtpy import QtCore, QtWidgets, QtGui
-import notgun.workareas
 
 ContextMenuPolicy = QtCore.Qt.ContextMenuPolicy
 

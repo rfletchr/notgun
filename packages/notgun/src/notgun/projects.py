@@ -28,22 +28,16 @@ class Project:
         projects_root: str,
         project_name: str,
         templates: notgun.templates.PathTemplateDict,
-        context_names: list[str] | tuple[str, ...],
         programs: dict[str, "notgun.launcher.Program"],
         root_workarea: notgun.workareas.WorkArea,
     ):
         self._templates = templates.copy()
         self._name = project_name
         self._root = projects_root
-        self._context_names = tuple[str, ...](context_names)
         self._programs = dict[str, Program](programs)
         self._app_adpater: notgun.adapters.ApplicationAdapter | None = None
         self._root_workarea: notgun.workareas.WorkArea = root_workarea
         self._metadata_cache: dict | None = None
-
-        for name in context_names:
-            if name not in templates and name != "episode":
-                raise KeyError(f"Missing Template: {name}")
 
     def name(self):
         return self._name
@@ -95,3 +89,6 @@ class Project:
 
     def workarea(self) -> notgun.workareas.WorkArea:
         return self._root_workarea
+
+    def workarea_from_path(self, path: str):
+        return notgun.workareas.workarea_from_path(path, self._root_workarea.schema)

@@ -22,3 +22,6 @@ class ApplicationAdapter(abc.ABC):
 
     @abc.abstractmethod
     def new(self): ...
+
+    @abc.abstractmethod
+    def supported_formats(self) -> tuple[str]: ...

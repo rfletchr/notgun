@@ -54,7 +54,7 @@ class NewWorkfileView(QtWidgets.QWidget):
 @dataclasses.dataclass
 class NewWorkfileResult:
     workarea: notgun.workareas.WorkArea
-    workfile_type: notgun.workareas.WorkfileSchema
+    workfile_type: notgun.schema.WorkfileSchema
     name: str
     version: int
     path: str
@@ -69,7 +69,7 @@ class NewWorkfileController(QtCore.QObject):
         super().__init__(parent=parent)
 
         self._active_workarea: notgun.workareas.WorkArea | None = None
-        self._workfile_type: notgun.workareas.WorkfileSchema | None = None
+        self._workfile_type: notgun.schema.WorkfileSchema | None = None
         self._workfile_name: str = ""
 
         self.validator = QtGui.QRegularExpressionValidator()
@@ -140,7 +140,7 @@ class NewWorkfileController(QtCore.QObject):
         fields = self._active_workarea.fields.copy()
         fields["name"] = self._workfile_name
         fields["version"] = version
-        fields["ext"] = self._workfile_type.extension
+        fields["extension"] = self._workfile_type.extension
 
         path = self._workfile_type.template.format(fields)
 

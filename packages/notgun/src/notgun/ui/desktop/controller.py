@@ -2,7 +2,6 @@ import os
 import platform
 import subprocess
 import logging
-import typing
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -90,17 +89,24 @@ class DesktopController(QtCore.QObject):
                     self.onNewWorkfileRequested(obj)
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
+            if not obj.workfiles:
+                return
+
             menu = QtWidgets.QMenu()
+
             open_workfile_action = menu.addAction("Open Workfile")
+            open_workfile_action.setProperty("workfile", obj.workfiles[-1])
 
             if len(obj.workfiles) > 1:
                 sub_menu = menu.addMenu("Open Version")
                 for workfile in obj.workfiles:
-                    f = lambda w=workfile: self.openWorkfileRequested(w)
-                    label = os.path.basename(workfile.path)
-                    sub_menu.addAction(label).triggered.connect(f)
+                    action = sub_menu.addAction(os.path.basename(workfile.path))
+                    action.setProperty("workfile", workfile)
 
-            menu.exec(pos)
+            if action := menu.exec(pos):
+                workfile = action.property("workfile")
+                if isinstance(workfile, notgun.workareas.Workfile):
+                    self.onOpenWorkfileRequested(workfile)
 
     def onNewWorkfileRequested(self, workarea: notgun.workareas.WorkArea):
         if not workarea.schema.workfiles:
@@ -124,7 +130,7 @@ class DesktopController(QtCore.QObject):
             bootstrap=bootstrap,
         )
 
-    def openWorkfileRequested(self, workfile: notgun.workareas.Workfile):
+    def onOpenWorkfileRequested(self, workfile: notgun.workareas.Workfile):
         if not self._active_project:
             return
 

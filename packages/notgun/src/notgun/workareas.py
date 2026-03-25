@@ -1,11 +1,9 @@
 from __future__ import annotations
 import typing
+import threading
 import dataclasses
 
-import notgun.templates
-
-if typing.TYPE_CHECKING:
-    import notgun.launcher
+import notgun.schema
 
 
 class WorkArea:
@@ -24,6 +22,7 @@ class WorkArea:
         self._parent = parent
         self._workareas: list[WorkArea] | None = None
         self._workfile_groups: list[WorkfileGroup] | None = None
+        self._lock = threading.Lock()
 
     @property
     def schema(self) -> notgun.schema.WorkareaSchema:
@@ -45,15 +44,17 @@ class WorkArea:
     def parent(self) -> "WorkArea|None":
         return self._parent
 
-    def workareas(self) -> list[WorkArea]:
-        if self._workareas is None:
-            self._workareas = list(iter_workareas(self))
-        return self._workareas
+    def workareas(self) -> tuple[WorkArea]:
+        with self._lock:
+            if self._workareas is None:
+                self._workareas = tuple(iter_workareas(self))
+            return self._workareas
 
-    def workfile_groups(self) -> list[WorkfileGroup]:
-        if self._workfile_groups is None:
-            self._workfile_groups = list(iter_workfile_groups(self))
-        return self._workfile_groups
+    def workfile_groups(self) -> tuple[WorkfileGroup]:
+        with self._lock:
+            if self._workfile_groups is None:
+                self._workfile_groups = tuple(iter_workfile_groups(self))
+            return self._workfile_groups
 
     def next_workfile_version(self, name: str, ext: str) -> int:
         self.invalidate_groups()
@@ -69,7 +70,8 @@ class WorkArea:
         return list(self.schema.workfiles.keys())
 
     def invalidate_groups(self):
-        self._workfile_groups = None
+        with self._lock:
+            self._workfile_groups = None
 
     def __repr__(self):
         return f"WorkArea(schema={self.schema.label}, path={self.path})"
@@ -110,7 +112,7 @@ def workarea_from_path(
 
     parent = WorkArea(
         root_type,
-        partial_match[root_type.identity_token],  # type: ignore
+        partial_match.get(root_type.identity_token, root_type.label),
         root_type.template.format(partial_match),
         partial_match,
     )

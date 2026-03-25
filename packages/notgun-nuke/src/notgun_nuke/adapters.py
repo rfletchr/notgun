@@ -25,3 +25,6 @@ class NukeApplicationAdapter(notgun.adapters.ApplicationAdapter):
 
     def new(self):
         nuke.scriptNew()
+
+    def supported_formats(self):
+        return (".nk",)
