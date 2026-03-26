@@ -9,6 +9,7 @@ def parse_args():
         "--projects-dir",
         type=str,
         required=False,
+        default="/mnt/projects",
     )
     return parser.parse_args()
 
@@ -20,25 +21,18 @@ def main(args):
     logging.basicConfig()
 
     app = QtWidgets.QApplication()
-    # print("app start")
+    projects_dir = args.projects_dir
 
-    # if args.projects_dir is None:
-    #     projects_dir = QtWidgets.QFileDialog.getExistingDirectory(
-    #         None,
-    #         "Select Projects Directory",
-    #     )
-    #     if not projects_dir:
-    #         print("No projects directory selected. Exiting.")
-    #         return
-    # else:
-    #     projects_dir = args.projects_dir
+    # use a standard icon for the apps icon for now
+    app.setApplicationName("Notgun Desktop")
+    app.setWindowIcon(app.style().standardIcon(QtWidgets.QStyle.SP_ComputerIcon))
 
-    controller = notgun.ui.desktop.controller.DesktopController("/home/user/Development/notgun/example")
+    controller = notgun.ui.desktop.controller.DesktopController(
+        projects_dir=projects_dir,
+    )
     app.aboutToQuit.connect(controller.shutdown)
     controller.view.show()
     controller.populate()
-
-
 
     return app.exec()
 

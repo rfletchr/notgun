@@ -56,17 +56,17 @@ class WorkareaSchema:
 
     label: str
     template: notgun.templates.PathTemplate
-    identity_token: str | None = None
+    identity_token: typing.Union[str, None] = None
     workareas: list[WorkareaSchema] = dataclasses.field(default_factory=list)
     workfiles: dict[str, WorkfileSchema] = dataclasses.field(default_factory=dict)
     publishes: PublishSchemaDict = dataclasses.field(default_factory=dict)
-    parent: WorkareaSchema | None = None
+    parent: typing.Union[WorkareaSchema, None] = None
 
     def add_child(
         self,
         label: str,
         template: notgun.templates.PathTemplate,
-        identity_token: str | None = None,
+        identity_token: typing.Union[str, None] = None,
     ) -> WorkareaSchema:
         result = WorkareaSchema(
             label,

@@ -1,4 +1,5 @@
 from __future__ import annotations
+import typing
 
 from qtpy import QtCore, QtGui
 
@@ -87,7 +88,7 @@ class DeferredItemModel(QtGui.QStandardItemModel):
     # ------------------------------------------------------------------
     # Unique-id lookup
 
-    def itemById(self, uid: str) -> DeferredItem | None:
+    def itemById(self, uid: str) -> typing.Union[DeferredItem, None]:
         """Return the :class:`DeferredItem` registered under *uid*, or None."""
         return self._id_lookup.get(uid)
 

@@ -3,6 +3,7 @@ import sys
 import json
 import platform
 import time
+import typing
 import webbrowser
 import dataclasses
 import keyring
@@ -37,9 +38,9 @@ _ASL_PATH = "/internal_api/app_session_request"
 
 def authenticate(
     site_url: str,
-    http_proxy: str | None = None,
+    http_proxy: typing.Union[str, None] = None,
     timeout: int = 180,
-    cancel_event: threading.Event | None = None,
+    cancel_event: typing.Union[threading.Event, None] = None,
 ) -> Credentials:
     """Authenticate against a ShotGrid site using the App Session Launcher flow.
 
@@ -149,7 +150,7 @@ def poll_for_credentials(
     )
 
 
-def validate(creds: Credentials, http_proxy: str | None = None) -> bool:
+def validate(creds: Credentials, http_proxy: typing.Union[str, None] = None) -> bool:
     """Return True if *creds* are still accepted by the server, False if expired.
 
     Makes a minimal authenticated API call (``find_one("HumanUser", [])``) and
@@ -180,7 +181,7 @@ def _store_credentials(creds: Credentials):
     keyring.set_password(service_name, creds.site_url, encoded)
 
 
-def _load_credentials(site_url: str) -> Credentials | None:
+def _load_credentials(site_url: str) -> typing.Union[Credentials, None]:
     service_name = f"notgun:flow"
     encoded = keyring.get_password(service_name, site_url)
     if not encoded:
@@ -193,7 +194,7 @@ def _load_credentials(site_url: str) -> Credentials | None:
         return None
 
 
-def get_credentials(site_url: str) -> Credentials | None:
+def get_credentials(site_url: str) -> typing.Union[Credentials, None]:
     creds = _load_credentials(site_url)
     if creds and validate(creds):
         return creds

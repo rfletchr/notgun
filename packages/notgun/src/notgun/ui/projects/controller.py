@@ -18,7 +18,7 @@ class ProjectsController(QtCore.QObject):
 
     def __init__(
         self,
-        view: notgun.ui.projects.view.ProjectsView | None = None,
+        view: typing.Union[notgun.ui.projects.view.ProjectsView, None] = None,
         parent=None,
     ):
         super().__init__(parent)

@@ -47,6 +47,12 @@ class WorkareaIconDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
         self._overlay_icon = QtGui.QIcon.fromTheme("document-edit")  # type: ignore
+        style = QtWidgets.QApplication.style()
+
+        if self._overlay_icon.isNull():
+            self._overlay_icon = style.standardIcon(
+                style.StandardPixmap.SP_FileDialogDetailedView
+            )
 
     def paint(
         self,
@@ -136,6 +142,9 @@ class FileManagerView(QtWidgets.QWidget):
         self.workarea_icons_view.setItemDelegate(self.workarea_icon_delegate)
         self.workarea_icons_view.clicked.connect(self.workareaItemClicked)
         self.workarea_icons_view.activated.connect(self.workareaItemActivated)
+        self.workarea_icons_view.setDragDropMode(
+            QtWidgets.QAbstractItemView.DragDropMode.NoDragDrop
+        )
 
         self.workarea_icons_view.setContextMenuPolicy(
             QtCore.Qt.ContextMenuPolicy.CustomContextMenu
@@ -165,6 +174,9 @@ class FileManagerView(QtWidgets.QWidget):
         grid_layout.setRowStretch(1, 1)
 
         self.setLayout(grid_layout)
+
+    def clearFilter(self):
+        self.search_bar.clear()
 
     def enableListMode(self):
         self.workarea_icons_view.setFlow(QtWidgets.QListView.Flow.TopToBottom)

@@ -7,6 +7,7 @@ from collections.abc import Callable
 from dataclasses import dataclass, field
 from enum import Enum, auto
 from string import Formatter
+import typing
 from typing import Any, NamedTuple
 
 _TEMPLATE_REF = re.compile(r"<([a-zA-Z_]\w*)>")
@@ -48,7 +49,7 @@ class Token:
     regex: str
     fmt: str
     converter: Callable[[str], Any] = field(default=str)
-    placeholder: Placeholder | None = field(default=None)
+    placeholder: typing.Union[Placeholder, None] = field(default=None)
 
     @classmethod
     def identifier(cls) -> "Token":
@@ -73,17 +74,16 @@ class Token:
         Raises:
             ValueError: If *style* is ``HASH_4`` and *padding* is not divisible by 4.
         """
-        match style:
-            case FrameStyle.HASH_1:
-                placeholder = Placeholder("#" * padding)
-            case FrameStyle.HASH_4:
-                if padding % 4 != 0:
-                    raise ValueError(
-                        f"HASH_4 requires padding divisible by 4, got {padding}"
-                    )
-                placeholder = Placeholder("#" * (padding // 4))
-            case FrameStyle.PRINTF:
-                placeholder = Placeholder(f"%0{padding}d")
+        if style == FrameStyle.HASH_1:
+            placeholder = Placeholder("#" * padding)
+        elif style == FrameStyle.HASH_4:
+            if padding % 4 != 0:
+                raise ValueError(
+                    f"HASH_4 requires padding divisible by 4, got {padding}"
+                )
+            placeholder = Placeholder("#" * (padding // 4))
+        elif style == FrameStyle.PRINTF:
+            placeholder = Placeholder(f"%0{padding}d")
         return cls(
             regex=r"\d+", fmt=f"0{padding}d", converter=int, placeholder=placeholder
         )
@@ -154,7 +154,7 @@ class Template:
         }
         return self._fmt.format_map(formatted)
 
-    def parse(self, s: str) -> dict[str, Any] | None:
+    def parse(self, s: str) -> typing.Union[dict[str, Any], None]:
         """Extract and convert field values from *s* using the template pattern.
 
         Raises:
@@ -163,7 +163,7 @@ class Template:
 
         return self.fullmatch(s)
 
-    def match(self, s: str) -> dict[str, Any] | None:
+    def match(self, s: str) -> typing.Union[dict[str, Any], None]:
         m = self._compiled.match(s)
         if m is None:
             return None
@@ -173,7 +173,7 @@ class Template:
             for name, value in m.groupdict().items()
         }
 
-    def fullmatch(self, s: str) -> dict[str, Any] | None:
+    def fullmatch(self, s: str) -> typing.Union[dict[str, Any], None]:
         m = self._compiled.fullmatch(s)
         if m is None:
             return None
@@ -204,7 +204,7 @@ class PathTemplate(Template):
     def root(self) -> str:
         return self._root
 
-    def parse(self, s: str) -> dict[str, Any] | None:
+    def parse(self, s: str) -> typing.Union[dict[str, Any], None]:
         """Parse an absolute path, stripping the root before matching the template.
 
         Raises:
@@ -213,7 +213,7 @@ class PathTemplate(Template):
         """
         return self.fullmatch(s)
 
-    def match(self, s: str) -> dict[str, Any] | None:
+    def match(self, s: str) -> typing.Union[dict[str, Any], None]:
         if not os.path.isabs(s):
             return None
         rel = os.path.relpath(s, self._root)
@@ -221,7 +221,7 @@ class PathTemplate(Template):
             return None
         return super().match(rel)
 
-    def fullmatch(self, s: str) -> dict[str, Any] | None:
+    def fullmatch(self, s: str) -> typing.Union[dict[str, Any], None]:
         if not os.path.isabs(s):
             return None
 

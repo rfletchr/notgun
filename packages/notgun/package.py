@@ -6,3 +6,4 @@ build_requires = ["python"]
 
 def commands():
     env.PYTHONPATH.prepend("{root}/src")
+    env.PATH.prepend("{root}/bin")

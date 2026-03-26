@@ -2,6 +2,7 @@ import os
 import platform
 import subprocess
 import logging
+import typing
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -26,12 +27,12 @@ class DesktopController(QtCore.QObject):
     def __init__(
         self,
         projects_dir: str,
-        view: notgun.ui.desktop.view.DesktopView | None = None,
-        parent: QtWidgets.QWidget | None = None,
+        view: typing.Union[notgun.ui.desktop.view.DesktopView, None] = None,
+        parent: typing.Union[QtWidgets.QWidget, None] = None,
     ):
         super().__init__(parent=parent)
         self._projects_dir: str = projects_dir
-        self._active_project: notgun.projects.Project | None = None
+        self._active_project: typing.Union[notgun.projects.Project, None] = None
 
         self.view: notgun.ui.desktop.view.DesktopView = (
             view or notgun.ui.desktop.view.DesktopView()
@@ -66,7 +67,7 @@ class DesktopController(QtCore.QObject):
     def shutdown(self):
         self.logger_controller.shutdown()
 
-    def populate(self, projects_dir: str | None = None):
+    def populate(self, projects_dir: typing.Union[str, None] = None):
         self.file_manager_controller.setProjectsDir(projects_dir or self._projects_dir)
 
     def onRequestNewWorkfile(self, result: notgun.ui.workfiles.NewWorkfileResult):
@@ -81,8 +82,17 @@ class DesktopController(QtCore.QObject):
 
         self.process_manager_controller.launchProgram(program, bootstrap=bootstrap)
 
-    def onRequestOpenWorkfile(self, workarea_index: QtCore.QModelIndex):
-        pass
+    def onRequestOpenWorkfile(self, workfile: notgun.workareas.Workfile):
+        program = workfile.schema.program
+
+        instruction = notgun.bootstrap.OpenFileInstruction(workfile.path)
+        bootstrap = notgun.bootstrap.BootstrapData(
+            workfile.group.workarea.project.projects_root(),
+            workfile.group.workarea.project.filesystem_name(),
+            instruction,
+        )
+
+        self.process_manager_controller.launchProgram(program, bootstrap=bootstrap)
 
 
 if __name__ == "__main__":
@@ -92,7 +102,7 @@ if __name__ == "__main__":
 
     app = QtWidgets.QApplication(sys.argv)
     app.setApplicationName("Notgun Launcher")
-    controller = DesktopController("/home/user/Development/notgun/example")
+    controller = DesktopController("/scratch/robert.fletcher/git/notgun/example")
     controller.populate()
     controller.view.show()
     app.aboutToQuit.connect(controller.shutdown)

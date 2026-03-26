@@ -132,8 +132,12 @@ class WorkareaModel(notgun.ui.deferred_item_model.DeferredItemModel):
 
     def setWorkarea(self, workarea: notgun.workareas.WorkArea):
         self.clear()
+
+        workarea.invalidate_workareas()
         for child_workarea in workarea.workareas():
             self.appendRow(WorkareaModelItem(child_workarea))
+
+        workarea.invalidate_groups()
         for group in workarea.workfile_groups():
             self.appendRow(WorkareaModelItem(group))
 

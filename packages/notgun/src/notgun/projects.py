@@ -15,14 +15,14 @@ if typing.TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-__CURRENT_PIPELINE: "Project|None" = None
+__CURRENT_PIPELINE: typing.Union["Project", None] = None
 
 
 def get_current():
     return __CURRENT_PIPELINE
 
 
-def set_current(pipeline: "Project|None"):
+def set_current(pipeline: typing.Union["Project", None]):
     global __CURRENT_PIPELINE
     __CURRENT_PIPELINE = pipeline
 
@@ -40,14 +40,14 @@ class Project:
         self._name = project_name
         self._root = projects_root
         self._programs = dict[str, Program](programs)
-        self._app_adpater: notgun.adapters.ApplicationAdapter | None = None
+        self._app_adpater: typing.Union[notgun.adapters.ApplicationAdapter, None] = None
         self._root_schema = root_schema
         self._root_workarea = notgun.workareas.workarea_from_path(
             os.path.join(self._root, self._name),
             root_schema,
             self,
         )
-        self._metadata_cache: dict | None = None
+        self._metadata_cache: typing.Union[dict, None] = None
 
     def filesystem_name(self):
         return self._name

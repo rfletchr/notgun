@@ -13,7 +13,7 @@ if typing.TYPE_CHECKING:
 
 class WorkareaMetadata(typing.NamedTuple):
     name: str
-    image_path: str | None
+    image_path: typing.Union[str, None]
 
 
 class WorkArea:
@@ -22,20 +22,20 @@ class WorkArea:
         schema: notgun.schema.WorkareaSchema,
         name: str,
         path: str,
-        fields: dict[str, int | str],
+        fields: dict[str, typing.Union[int, str]],
         project: "notgun.projects.Project",
-        parent: "WorkArea|None" = None,
+        parent: typing.Union[WorkArea, None] = None,
     ):
         self._schema = schema
         self._name = name
         self._path = path
         self._fields = fields
         self._parent = parent
-        self._workareas: tuple[WorkArea, ...] | None = None
-        self._workfile_groups: tuple[WorkfileGroup, ...] | None = None
+        self._workareas: typing.Union[tuple[WorkArea, ...], None] = None
+        self._workfile_groups: typing.Union[tuple[WorkfileGroup, ...], None] = None
         self._lock = threading.Lock()
         self._project = project
-        self._metadata: WorkareaMetadata | None = None
+        self._metadata: typing.Union[WorkareaMetadata, None] = None
 
     @property
     def schema(self) -> notgun.schema.WorkareaSchema:
@@ -50,11 +50,11 @@ class WorkArea:
         return self._path
 
     @property
-    def fields(self) -> dict[str, int | str]:
+    def fields(self) -> dict[str, typing.Union[int, str]]:
         return self._fields
 
     @property
-    def parent(self) -> "WorkArea|None":
+    def parent(self) -> typing.Union[WorkArea, None]:
         return self._parent
 
     @property
@@ -105,6 +105,10 @@ class WorkArea:
         with self._lock:
             self._workfile_groups = None
 
+    def invalidate_workareas(self):
+        with self._lock:
+            self._workareas = None
+
     def __repr__(self):
         return f"WorkArea(schema={self.schema.label}, path={self.path})"
 
@@ -113,7 +117,7 @@ class WorkArea:
 class Workfile:
     schema: notgun.schema.WorkfileSchema
     path: str
-    fields: dict[str, int | str]
+    fields: dict[str, typing.Union[int, str]]
     group: WorkfileGroup
 
     def version(self) -> int:
@@ -124,7 +128,7 @@ class Workfile:
 class WorkfileGroup:
     name: str
     filetype: str
-    parent: WorkArea
+    workarea: WorkArea
     workfiles: list[Workfile] = dataclasses.field(default_factory=list)
 
     def latest_workfile(self) -> Workfile:
@@ -135,7 +139,7 @@ def workarea_from_path(
     path: str,
     root_type: notgun.schema.WorkareaSchema,
     project: "notgun.projects.Project",
-    parent: WorkArea | None = None,
+    parent: typing.Union[WorkArea, None] = None,
 ):
     # if its a full match then we've found the location.
     if fields := root_type.template.fullmatch(path):

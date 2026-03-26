@@ -8,3 +8,10 @@ rez_install_python(
     DESTINATION .
     LOCAL_SYMLINK
 )
+
+file(GLOB bin_files "bin/*")
+rez_install_files(
+    ${bin_files}
+    DESTINATION .
+    EXECUTABLE
+)

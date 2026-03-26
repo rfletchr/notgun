@@ -1,3 +1,4 @@
+from __future__ import annotations
 import os
 import argparse
 import dataclasses
@@ -8,6 +9,7 @@ import sys
 import tempfile
 import time
 import logging
+import typing
 
 logger = logging.getLogger(__name__)
 
@@ -20,7 +22,7 @@ class ProcessInfo:
     pid: int
     log_file: str
     timestamp: int
-    return_code: int | None = None
+    return_code: typing.Union[int, None] = None
 
     @classmethod
     def iter(cls, log_directory: str):
@@ -64,9 +66,9 @@ class Program:
 def launch_program(
     program: Program,
     log_directory: str,
-    cwd: str | None = None,
-    label: str | None = None,
-    env: dict[str, str] | None = None,
+    cwd: typing.Union[str, None] = None,
+    label: typing.Union[str, None] = None,
+    env: typing.Union[dict[str, str], None] = None,
 ):
 
     env = env or os.environ.copy()

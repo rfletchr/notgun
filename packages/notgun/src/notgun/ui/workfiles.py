@@ -2,6 +2,7 @@ __all__ = ["NewFileDialog"]
 
 from notgun.ui.workareas.view import NewFileDialog
 import dataclasses
+import typing
 from qtpy import QtCore, QtGui, QtWidgets
 
 import notgun.workareas
@@ -69,13 +70,13 @@ class NewWorkfileResult:
 class NewWorkfileController(QtCore.QObject):
     def __init__(
         self,
-        view: NewWorkfileView | None = None,
+        view: typing.Union[NewWorkfileView, None] = None,
         parent=None,
     ):
         super().__init__(parent=parent)
 
-        self._active_workarea: notgun.workareas.WorkArea | None = None
-        self._workfile_type: notgun.schema.WorkfileSchema | None = None
+        self._active_workarea: typing.Union[notgun.workareas.WorkArea, None] = None
+        self._workfile_type: typing.Union[notgun.schema.WorkfileSchema, None] = None
         self._workfile_name: str = ""
 
         self.validator = QtGui.QRegularExpressionValidator()
@@ -132,7 +133,7 @@ class NewWorkfileController(QtCore.QObject):
     def onWorkfileNameChanged(self, name: str):
         self._workfile_name = name
 
-    def result(self) -> NewWorkfileResult | None:
+    def result(self) -> typing.Union[NewWorkfileResult, None]:
         if self._active_workarea is None:
             raise ValueError("No active workarea set")
 
@@ -183,9 +184,9 @@ class NewWorkfileDialog(QtWidgets.QDialog):
     def pickFromWorkarea(
         cls,
         workarea: notgun.workareas.WorkArea,
-        workfile_type: str | None = None,
-        parent: QtWidgets.QWidget | None = None,
-    ) -> NewWorkfileResult | None:
+        workfile_type: typing.Union[str, None] = None,
+        parent: typing.Union[QtWidgets.QWidget, None] = None,
+    ) -> typing.Union[NewWorkfileResult, None]:
         dialog = cls(parent=parent)
         controller = NewWorkfileController(view=dialog.view)
         controller.setWorkarea(workarea)

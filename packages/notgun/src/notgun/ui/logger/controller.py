@@ -1,5 +1,6 @@
 import logging
 import queue
+import typing
 
 import notgun.ui.logger.model
 import notgun.ui.logger.view
@@ -21,7 +22,7 @@ class QueueHandler(logging.Handler):
 class LogController(QtCore.QObject):
     """Controller that manages logging from a queue to a model."""
 
-    def __init__(self, view: notgun.ui.logger.view.LogView | None = None, parent=None):
+    def __init__(self, view: typing.Union[notgun.ui.logger.view.LogView, None] = None, parent=None):
         super().__init__(parent)
         self.log_queue: queue.Queue[logging.LogRecord] = queue.Queue()
         self.queue_handler = QueueHandler(self.log_queue)

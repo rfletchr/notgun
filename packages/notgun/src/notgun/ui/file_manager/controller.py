@@ -33,10 +33,19 @@ class ChangeWorkareaCommand(QtGui.QUndoCommand):  # type: ignore[attr-defined]
 class FileManagerController(QtCore.QObject):
     def __init__(
         self,
-        view: notgun.ui.file_manager.view.FileManagerView | None = None,
-        workfile_action_handler: WorkareaActionHandler | None = None,
+        view: typing.Union[notgun.ui.file_manager.view.FileManagerView, None] = None,
+        workfile_action_handler: typing.Union[WorkareaActionHandler, None] = None,
     ):
         super().__init__()
+
+        self._active_project: typing.Union[notgun.projects.Project, None] = None
+        self._active_workarea: typing.Union[notgun.workareas.WorkArea, None] = None
+
+        self._refresh_timer = QtCore.QTimer(self)
+        self._refresh_timer.setInterval(5000)
+        self._refresh_timer.timeout.connect(self.refresh)
+        # self._refresh_timer.start()
+
         self.path_model = notgun.ui.file_manager.model.WorkareaPathModel()
         self.projects_model = notgun.ui.file_manager.model.ProjectsModel()
         self.workarea_model = notgun.ui.file_manager.model.WorkareaModel()
@@ -48,10 +57,10 @@ class FileManagerController(QtCore.QObject):
             QtCore.Qt.CaseSensitivity.CaseInsensitive
         )
 
-        self._current_workarea: notgun.workareas.WorkArea | None = None
         self.undo_stack = QtGui.QUndoStack(self)  # type: ignore[attr-defined]
 
         self.action_handler = workfile_action_handler or WorkareaActionHandler()
+        self.action_handler.refreshRequested.connect(self.refresh)
 
         self.view = view or notgun.ui.file_manager.view.FileManagerView()
         self._applyStylesheet()
@@ -90,31 +99,42 @@ class FileManagerController(QtCore.QObject):
 
     def onProjectItemClicked(self, index: QtCore.QModelIndex):
         project: notgun.projects.Project = index.data(QtCore.Qt.ItemDataRole.UserRole)
+        self._active_project = project
+        self.undo_stack.clear()
         self.setWorkarea(project.workarea())
 
     def _applyWorkarea(self, workarea: notgun.workareas.WorkArea):
-        self._current_workarea = workarea
+        self._active_workarea = workarea
         self.workarea_model.setWorkarea(workarea)
         self.path_model.setWorkarea(workarea)
 
     def setWorkarea(self, workarea: notgun.workareas.WorkArea):
-        if self._current_workarea is None:
+
+        if self._active_workarea is None:
             self._applyWorkarea(workarea)
         else:
             self.undo_stack.push(
-                ChangeWorkareaCommand(self, self._current_workarea, workarea)
+                ChangeWorkareaCommand(self, self._active_workarea, workarea)
             )
+
+    def refresh(self):
+        if self._active_workarea is not None:
+            self._applyWorkarea(self._active_workarea)
 
     def onWorkareaItemActivated(self, index: QtCore.QModelIndex):
         workarea = index.data(notgun.ui.file_manager.model.ModelRole.Data)
 
         if isinstance(workarea, notgun.workareas.WorkArea):
             self.setWorkarea(workarea)
+            self.view.clearFilter()
         elif isinstance(workarea, notgun.workareas.WorkfileGroup):
             self.action_handler.onWorkfileGroupActivated(workarea)
 
     def onWorkareaItemRightClicked(self, index: QtCore.QModelIndex, pos: QtCore.QPoint):
-        backing_item = index.data(notgun.ui.file_manager.model.ModelRole.Data)
+        backing_item = (
+            index.data(notgun.ui.file_manager.model.ModelRole.Data)
+            or self._active_workarea
+        )
         self.action_handler.onContextMenuRequested(backing_item, pos)
 
     def onPathItemClicked(self, index: QtCore.QModelIndex):
@@ -172,6 +192,7 @@ ObjectType = typing.Union[
 
 
 class WorkareaActionHandler(QtCore.QObject):
+    refreshRequested = QtCore.Signal()  # type: ignore
     requestOpenWorkfile = QtCore.Signal(notgun.workareas.Workfile)  # type: ignore
     requestNewWorkfile = QtCore.Signal(notgun.ui.workfiles.NewWorkfileResult)  # type: ignore
 
@@ -181,6 +202,7 @@ class WorkareaActionHandler(QtCore.QObject):
         self.new_icon = QtGui.QIcon.fromTheme("document-new")  # type: ignore
         self.folder_icon = QtGui.QIcon.fromTheme("folder")  # type: ignore
         self.list_icon = QtGui.QIcon.fromTheme("view-list")  # type: ignore
+        self.refresh_icon = QtGui.QIcon.fromTheme("view-refresh")  # type: ignore
 
     def onWorkfileGroupActivated(self, workfile_group: notgun.workareas.WorkfileGroup):
         latest_workfile = workfile_group.latest_workfile()
@@ -197,19 +219,34 @@ class WorkareaActionHandler(QtCore.QObject):
             new_icon = style.standardIcon(style.StandardPixmap.SP_FileDialogNewFolder)  # type: ignore[attr-defined]
 
         if isinstance(obj, notgun.workareas.WorkArea):
-            open_dir_action = menu.addAction("Open Directory")
+            refresh_action = menu.addAction("Refresh")
+            refresh_action.setIcon(self.refresh_icon)
+            refresh_action.triggered.connect(self.refreshRequested)
+
+            open_dir_action = menu.addAction("Open in File Explorer")
             open_dir_action.setIcon(self.folder_icon)
 
             open_dir_action.setData(obj.path)
             open_dir_action.triggered.connect(self.onOpenPathActionTriggered)
 
             if obj.schema.workfiles:
-                sub_menu = menu.addMenu("Create New")
-                sub_menu.setIcon(self.new_icon)
+                new_menu = menu.addMenu("Create New")
+                new_menu.setIcon(self.new_icon)
                 for workfile_type in obj.schema.workfiles:
-                    action = sub_menu.addAction(workfile_type)
+                    action = new_menu.addAction(workfile_type)
                     action.setData((obj, workfile_type))
                     action.triggered.connect(self.onNewWorkfileActionTriggered)
+
+                open_menu = menu.addMenu("Open")
+                open_menu.setIcon(self.open_icon)
+                for workfile_group in obj.workfile_groups():
+                    group_menu = open_menu.addMenu(workfile_group.name)
+                    group_menu.setIcon(self.list_icon)
+                    for workfile in reversed(workfile_group.workfiles):
+                        action = group_menu.addAction(os.path.basename(workfile.path))
+                        action.setIcon(self.open_icon)
+                        action.setData(workfile)
+                        action.triggered.connect(self.onOpenWorkfileActionTriggered)
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
             open_action = menu.addAction("Open")

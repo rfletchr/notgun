@@ -1,5 +1,6 @@
 import os
 import logging
+import typing
 
 from qtpy import QtCore, QtGui, QtWidgets
 
@@ -16,7 +17,7 @@ class ProcessManagerController(QtCore.QObject):
     def __init__(
         self,
         log_directory: str,
-        view: notgun.ui.process_manager.view.ProcessManagerView | None = None,
+        view: typing.Union[notgun.ui.process_manager.view.ProcessManagerView, None] = None,
         parent=None,
     ):
         super().__init__(parent=parent)
@@ -31,7 +32,7 @@ class ProcessManagerController(QtCore.QObject):
         self.proxy_model.sort(0, QtCore.Qt.SortOrder.DescendingOrder)
 
         self.log_document = QtGui.QTextDocument()
-        self.__process_info: notgun.launcher.ProcessInfo | None = None
+        self.__process_info: typing.Union[notgun.launcher.ProcessInfo, None] = None
 
         self.view = view or notgun.ui.process_manager.view.ProcessManagerView()
         self.view.setModel(self.model)
@@ -77,10 +78,10 @@ class ProcessManagerController(QtCore.QObject):
     def launchProgram(
         self,
         program: notgun.launcher.Program,
-        env: dict[str, str] | None = None,
-        cwd: str | None = None,
-        label: str | None = None,
-        bootstrap: notgun.bootstrap.BootstrapData | None = None,
+        env: typing.Union[dict[str, str], None] = None,
+        cwd: typing.Union[str, None] = None,
+        label: typing.Union[str, None] = None,
+        bootstrap: typing.Union[notgun.bootstrap.BootstrapData, None] = None,
     ):
         env = env or os.environ.copy()
 
