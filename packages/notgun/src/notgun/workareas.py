@@ -130,6 +130,7 @@ class WorkfileGroup:
     name: str
     filetype: str
     workarea: WorkArea
+    schema: notgun.schema.WorkfileSchema
     workfiles: list[Workfile] = dataclasses.field(default_factory=list)
 
     def latest_workfile(self) -> Workfile:
@@ -240,7 +241,7 @@ def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileG
             ext = path_fields["extension"]
             key = (name, ext)
             if key not in memo:
-                memo[key] = WorkfileGroup(name, ext, parent_workarea)
+                memo[key] = WorkfileGroup(name, ext, parent_workarea, workfile_schema)
 
             group = memo[key]
             group.workfiles.append(Workfile(workfile_schema, path, path_fields, group))

@@ -8,6 +8,7 @@ import notgun.workareas
 import notgun.projects
 import notgun.ui.file_manager.view
 import notgun.ui.file_manager.model
+import notgun.ui.file_manager.icons
 import notgun.ui.workfiles
 
 
@@ -80,6 +81,8 @@ class FileManagerController(QtCore.QObject):
         goto_parent_action.triggered.connect(self.undo_stack.undo)
         self.undo_stack.canUndoChanged.connect(goto_parent_action.setEnabled)
         self.view.addAction(goto_parent_action)
+
+        self.view.enableListMode()
 
     def _applyStylesheet(self):
         stylesheet_path = os.path.join(
@@ -204,6 +207,8 @@ class WorkareaActionHandler(QtCore.QObject):
         self.list_icon = QtGui.QIcon.fromTheme("view-list")  # type: ignore
         self.refresh_icon = QtGui.QIcon.fromTheme("view-refresh")  # type: ignore
 
+        self.icon_provider = notgun.ui.file_manager.model.IconProvider()
+
     def onWorkfileGroupActivated(self, workfile_group: notgun.workareas.WorkfileGroup):
         latest_workfile = workfile_group.latest_workfile()
         if latest_workfile is not None:
@@ -211,12 +216,6 @@ class WorkareaActionHandler(QtCore.QObject):
 
     def onContextMenuRequested(self, obj: ObjectType, pos: QtCore.QPoint):
         menu = QtWidgets.QMenu()
-        style = menu.style()
-
-        # get new icon from theme, fallback to standard icon if not found
-        new_icon = QtGui.QIcon.fromTheme("document-new")
-        if new_icon.isNull():
-            new_icon = style.standardIcon(style.StandardPixmap.SP_FileDialogNewFolder)  # type: ignore[attr-defined]
 
         if isinstance(obj, notgun.workareas.WorkArea):
             refresh_action = menu.addAction("Refresh")
@@ -232,36 +231,44 @@ class WorkareaActionHandler(QtCore.QObject):
             if obj.schema.workfiles:
                 new_menu = menu.addMenu("Create New")
                 new_menu.setIcon(self.new_icon)
-                for workfile_type in obj.schema.workfiles:
+
+                for workfile_type, schema in obj.schema.workfiles.items():
+                    icon = self.icon_provider.forExtension(schema.extension)
                     action = new_menu.addAction(workfile_type)
                     action.setData((obj, workfile_type))
+                    action.setIcon(icon)
                     action.triggered.connect(self.onNewWorkfileActionTriggered)
 
                 open_menu = menu.addMenu("Open")
                 open_menu.setIcon(self.open_icon)
                 for workfile_group in obj.workfile_groups():
+                    ext = workfile_group.schema.extension
+                    group_icon = self.icon_provider.forExtension(ext)
+
                     group_menu = open_menu.addMenu(workfile_group.name)
-                    group_menu.setIcon(self.list_icon)
+                    group_menu.setIcon(group_icon)
                     for workfile in reversed(workfile_group.workfiles):
                         action = group_menu.addAction(os.path.basename(workfile.path))
-                        action.setIcon(self.open_icon)
+                        action.setIcon(group_icon)
                         action.setData(workfile)
                         action.triggered.connect(self.onOpenWorkfileActionTriggered)
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
             open_action = menu.addAction("Open")
             open_action.setIcon(self.open_icon)
-            latest_workfile = obj.latest_workfile()
-            if latest_workfile is not None:
-                open_action.setData(latest_workfile)
-                open_action.triggered.connect(self.onOpenWorkfileActionTriggered)
+            icon = (
+                self.icon_provider.forExtension(obj.schema.extension) or self.open_icon
+            )
+
+            open_action.setData(obj.latest_workfile())
+            open_action.triggered.connect(self.onOpenWorkfileActionTriggered)
 
             open_version_menu = menu.addMenu("Versions")
             open_version_menu.setIcon(self.list_icon)
 
             for workfile in reversed(obj.workfiles):
                 action = open_version_menu.addAction(os.path.basename(workfile.path))
-                action.setIcon(self.open_icon)
+                action.setIcon(icon)
                 action.setData(workfile)
                 action.triggered.connect(self.onOpenWorkfileActionTriggered)
 

@@ -15,6 +15,10 @@ logger = logging.getLogger(__name__)
 
 
 class IconProvider(QtWidgets.QFileIconProvider):
+    def __init__(self):
+        super().__init__()
+        self.app_style = QtWidgets.QApplication.style()
+
     def icon(self, file_info: QtCore.QFileInfo) -> QtGui.QIcon:
         if file_info.isFile():
             try:
@@ -24,6 +28,16 @@ class IconProvider(QtWidgets.QFileIconProvider):
                 return super().icon(file_info)
         else:
             return super().icon(file_info)
+
+    def forExtension(self, extension: str) -> QtGui.QIcon:
+        extension = extension.lower().lstrip(".")
+        for_ext = notgun.ui.file_manager.icons.get_icon(f"{extension}.png")
+        if for_ext is not None:
+            return for_ext
+        else:
+            return self.app_style.standardIcon(
+                self.app_style.StandardPixmap.SP_FileIcon
+            )
 
 
 class ModelRole(enum.IntEnum):

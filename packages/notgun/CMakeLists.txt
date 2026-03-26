@@ -9,6 +9,12 @@ rez_install_python(
     LOCAL_SYMLINK
 )
 
+file(GLOB_RECURSE img_files "src/notgun/*.png")
+rez_install_files(
+    ${img_files}
+    DESTINATION .
+)
+
 file(GLOB bin_files "bin/*")
 rez_install_files(
     ${bin_files}
