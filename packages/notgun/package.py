@@ -1,5 +1,5 @@
 name = "notgun"
-version = "0.1.0"
+version = "0.1.1"
 requires = ["python-3+", "requests", "shotgun_api3", "QtPy"]
 build_requires = ["python"]
 

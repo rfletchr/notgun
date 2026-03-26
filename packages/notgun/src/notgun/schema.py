@@ -1,4 +1,5 @@
 from __future__ import annotations
+import fnmatch
 import typing
 import dataclasses
 
@@ -52,6 +53,7 @@ class WorkareaSchema:
         workareas: A list of child workarea schemas that can exist within this workarea.
         workfiles: A mapping of workfile type to workfile schemas that can exist within this workarea.
         icon_name: The name of the icon to represent this workarea in the UI
+        name_filters: A tuple of name filters for this workarea.
     """
 
     label: str
@@ -61,17 +63,20 @@ class WorkareaSchema:
     workfiles: dict[str, WorkfileSchema] = dataclasses.field(default_factory=dict)
     publishes: PublishSchemaDict = dataclasses.field(default_factory=dict)
     parent: typing.Union[WorkareaSchema, None] = None
+    name_filters: tuple[str, ...] = ("*",)
 
     def add_child(
         self,
         label: str,
         template: notgun.templates.PathTemplate,
         identity_token: typing.Union[str, None] = None,
+        name_filters: tuple[str, ...] = ("*",),
     ) -> WorkareaSchema:
         result = WorkareaSchema(
             label,
             template,
             identity_token=identity_token,
+            name_filters=name_filters,
             parent=self,
         )
         self.workareas.append(result)
@@ -110,3 +115,9 @@ class WorkareaSchema:
 
         key = (tuple(workfile_names), tuple(task_names))
         self.publishes[key] = result
+
+    def match_name(self, name: str) -> bool:
+        for filter in self.name_filters:
+            if fnmatch.fnmatch(name, filter):
+                return True
+        return False

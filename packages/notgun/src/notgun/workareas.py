@@ -1,6 +1,7 @@
 from __future__ import annotations
 import json
 import os
+import fnmatch
 import typing
 import threading
 import dataclasses
@@ -135,6 +136,15 @@ class WorkfileGroup:
         return max(self.workfiles, key=lambda wf: wf.version())
 
 
+def get_workarea_name(
+    schema: notgun.schema.WorkareaSchema, fields: dict[str, typing.Union[int, str]]
+) -> str:
+    if schema.identity_token is not None:
+        return fields[schema.identity_token]  # type: ignore
+    else:
+        return schema.label
+
+
 def workarea_from_path(
     path: str,
     root_type: notgun.schema.WorkareaSchema,
@@ -143,12 +153,28 @@ def workarea_from_path(
 ):
     # if its a full match then we've found the location.
     if fields := root_type.template.fullmatch(path):
-        name = fields[root_type.identity_token]  # type: ignore
-        return WorkArea(root_type, name, path, fields, project, parent)
+        name = get_workarea_name(root_type, fields)
+
+        if not root_type.match_name(name):
+            return
+
+        return WorkArea(
+            root_type,
+            name,
+            path,
+            fields,
+            project,
+            parent=parent,
+        )
 
     partial_match = root_type.template.match(path)
     if not isinstance(partial_match, dict):
         return
+
+    if root_type.identity_token:
+        name = get_workarea_name(root_type, partial_match)
+        if not root_type.match_name(name):
+            return
 
     parent = WorkArea(
         root_type,
@@ -156,7 +182,7 @@ def workarea_from_path(
         root_type.template.format(partial_match),
         partial_match,
         project,
-        parent,
+        parent=parent,
     )
 
     for child_type in root_type.workareas:

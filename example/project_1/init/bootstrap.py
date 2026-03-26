@@ -83,6 +83,7 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
         "Workarea",
         templates["shot_workarea"],
         identity_token="app",
+        name_filters=("nuke",),
     )
     shot_workarea_schema.add_workfile(
         "Nuke Script",

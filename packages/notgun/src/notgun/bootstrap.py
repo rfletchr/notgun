@@ -23,7 +23,12 @@ class NewFileInstruction(typing.NamedTuple):
         return {"filepath": self.filepath, "type": "new_file"}
 
 
-def instruction_factory(data: dict) -> typing.Union[OpenFileInstruction, NewFileInstruction, None]:
+InstructionTypes = typing.Union[OpenFileInstruction, NewFileInstruction]
+
+
+def instruction_factory(
+    data: dict,
+) -> typing.Union[InstructionTypes, None]:
     instruction_type = data.get("type")
     if instruction_type == "open_file":
         return OpenFileInstruction(data["filepath"])
@@ -34,7 +39,7 @@ def instruction_factory(data: dict) -> typing.Union[OpenFileInstruction, NewFile
 class BootstrapData(typing.NamedTuple):
     projects_dir: str
     project_name: str
-    instruction: typing.Union[OpenFileInstruction, NewFileInstruction, None] = None
+    instruction: typing.Union[InstructionTypes, None] = None
 
     @staticmethod
     def is_in_env():
