@@ -4,6 +4,45 @@ import notgun.ui.file_manager.model
 import notgun.workareas
 
 
+class PathItemDelegate(QtWidgets.QStyledItemDelegate):
+    def paint(
+        self,
+        painter: QtGui.QPainter,
+        option: QtWidgets.QStyleOptionViewItem,
+        index: QtCore.QModelIndex,
+    ):
+        item_type = index.data(notgun.ui.file_manager.model.ModelRole.Type)
+
+        if item_type != notgun.ui.file_manager.model.PathItemType.Spacer:
+            super().paint(painter, option, index)
+            return
+
+        style = (
+            option.widget.style()
+            if option.widget is not None
+            else QtWidgets.QApplication.style()
+        )
+
+        hovered = option.state & QtWidgets.QStyle.StateFlag.State_MouseOver
+
+        arrow_opt = QtWidgets.QStyleOption()
+        arrow_opt.rect = option.rect
+        arrow_opt.state = option.state
+
+        painter.save()
+        if hovered:
+            rect = option.rect.adjusted(1, 1, -1, -1)
+            painter.setPen(QtGui.QPen(QtGui.QColor(100, 100, 100, 200), 1))
+            painter.drawRect(rect)
+        style.drawPrimitive(
+            QtWidgets.QStyle.PrimitiveElement.PE_IndicatorArrowDown,
+            arrow_opt,
+            painter,
+            option.widget,
+        )
+        painter.restore()
+
+
 class WorkareaIconDelegate(QtWidgets.QStyledItemDelegate):
     def __init__(self, parent=None):
         super().__init__(parent)
@@ -71,8 +110,10 @@ class FileManagerView(QtWidgets.QWidget):
         self.path_view.setViewMode(QtWidgets.QListView.ViewMode.ListMode)
         self.path_view.setFlow(QtWidgets.QListView.Flow.LeftToRight)
         self.path_view.setWrapping(False)
-        self.path_view.setAlternatingRowColors(True)
         self.path_view.setFixedHeight(self.path_view.fontMetrics().height() + 14)
+        self.path_view.viewport().setMouseTracking(True)
+        self.path_item_delegate = PathItemDelegate(self.path_view)
+        self.path_view.setItemDelegate(self.path_item_delegate)
         self.path_view.clicked.connect(self.pathItemClicked)
 
         self.search_bar = QtWidgets.QLineEdit()
@@ -136,7 +177,7 @@ class FileManagerView(QtWidgets.QWidget):
     def setPathModel(self, model):
         self.path_view.setModel(model)
 
-    def setWorkareaModel(self, model):
+    def setWorkareasModel(self, model):
         self.workarea_icons_view.setModel(model)
 
     def setWorkareaRootIndex(self, index):
@@ -153,3 +194,58 @@ class FileManagerView(QtWidgets.QWidget):
         # NOTE: don't reject invalid index, as it can be used to show context menu for white space.
         global_pos = self.workarea_icons_view.viewport().mapToGlobal(pos)
         self.workareaItemRightClicked.emit(index, global_pos)
+
+
+class NewFileView(QtWidgets.QWidget):
+    appChanged = QtCore.Signal(str)  # type: ignore
+
+    def __init__(self, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("New File")
+
+        self.app_combo = QtWidgets.QComboBox()
+        self.app_combo.setEditable(False)
+        self.app_combo.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+        self.app_combo.currentTextChanged.connect(self.appChanged.emit)
+
+        self.names_combo = QtWidgets.QComboBox()
+        self.names_combo.setEditable(True)
+        self.names_combo.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+
+        self.extension_combo = QtWidgets.QComboBox()
+        self.extension_combo.setEditable(False)
+        self.extension_combo.setInsertPolicy(QtWidgets.QComboBox.InsertPolicy.NoInsert)
+
+        layout = QtWidgets.QHBoxLayout(self)
+        layout.addWidget(self.app_combo, stretch=1)
+        layout.addWidget(self.names_combo, stretch=5)
+        layout.addWidget(self.extension_combo, stretch=1)
+
+    def setApps(self, apps: list[str]):
+        self.app_combo.clear()
+        self.app_combo.addItems(apps)
+
+    def setNames(self, names: list[str]):
+        self.names_combo.clear()
+        self.names_combo.addItems(names)
+
+    def name(self) -> str:
+        return self.names_combo.currentText()
+
+    def setExtensions(self, extensions: list[str]):
+        self.extension_combo.clear()
+        self.extension_combo.addItems(extensions)
+
+    def extension(self) -> str:
+        return self.extension_combo.currentText()
+
+    def setValidator(self, validator: QtGui.QValidator):
+        self.names_combo.setValidator(validator)
+
+    def sizeHint(self):
+        font = self.font()
+        metrics = QtGui.QFontMetrics(font)
+        width = metrics.maxWidth() * 25
+
+        base = super().sizeHint()
+        return QtCore.QSize(width, base.height())

@@ -49,8 +49,11 @@ class Project:
         )
         self._metadata_cache: dict | None = None
 
-    def name(self):
+    def filesystem_name(self):
         return self._name
+
+    def projects_root(self):
+        return self._root
 
     def directory(self):
         return os.path.join(self._root, self._name)

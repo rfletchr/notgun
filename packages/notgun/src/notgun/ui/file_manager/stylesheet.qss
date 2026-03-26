@@ -51,11 +51,14 @@ QListView#workarea_icons_view::item:hover {
 
 QListView#workarea_icons_view::item {
     border: 1px solid transparent;
+    background red;
 	
 }
 
 QListView#workarea_icons_view::item:selected {
-    color: palette(text)
+    color: palette(text);
+    background: rgba(0, 127, 255, 64);
+    border-radius: 8px;
 }
 
 

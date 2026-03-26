@@ -5,11 +5,12 @@ import dataclasses
 from qtpy import QtCore, QtGui, QtWidgets
 
 import notgun.workareas
+import notgun.schema
 
 
 class NewWorkfileView(QtWidgets.QWidget):
-    workfileTypeChanged = QtCore.Signal(str)
-    workfileNameChanged = QtCore.Signal(str)
+    workfileTypeChanged = QtCore.Signal(str)  # type: ignore
+    workfileNameChanged = QtCore.Signal(str)  # type: ignore
 
     def __init__(self, parent=None):
         super().__init__(parent=parent)
@@ -42,6 +43,11 @@ class NewWorkfileView(QtWidgets.QWidget):
     def setWorkfileTypes(self, types: list[str]):
         self.workfile_type_combo.clear()
         self.workfile_type_combo.addItems(types)
+
+    def setWorkfileType(self, type_name: str):
+        index = self.workfile_type_combo.findText(type_name)
+        if index != -1:
+            self.workfile_type_combo.setCurrentIndex(index)
 
     def setNames(self, names: list[str]):
         self.name_combo.clear()
@@ -93,6 +99,9 @@ class NewWorkfileController(QtCore.QObject):
         if workfile_types:
             self.view.setWorkfileTypes(workfile_types)
             self.onWorkfileTypeChanged(workfile_types[0])
+
+    def setWorkfileType(self, type_name: str):
+        self.view.setWorkfileType(type_name)
 
     def onWorkfileTypeChanged(self, type_name: str):
         assert self._active_workarea is not None, "No active workarea set"
@@ -156,6 +165,7 @@ class NewWorkfileController(QtCore.QObject):
 class NewWorkfileDialog(QtWidgets.QDialog):
     def __init__(self, parent=None):
         super().__init__(parent=parent)
+        self.setWindowTitle("New Workfile")
 
         self.view = NewWorkfileView()
         self.button_box = QtWidgets.QDialogButtonBox(
@@ -173,6 +183,7 @@ class NewWorkfileDialog(QtWidgets.QDialog):
     def pickFromWorkarea(
         cls,
         workarea: notgun.workareas.WorkArea,
+        workfile_type: str | None = None,
         parent: QtWidgets.QWidget | None = None,
     ) -> NewWorkfileResult | None:
         dialog = cls(parent=parent)

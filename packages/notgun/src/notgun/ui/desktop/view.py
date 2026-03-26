@@ -1,33 +1,24 @@
 from qtpy import QtCore, QtGui, QtWidgets
 
-import notgun.ui.workareas.view
-import notgun.ui.projects.view
 import notgun.ui.logger.view
 import notgun.ui.process_manager.view
+import notgun.ui.file_manager.view
 
 
 class ProjectBrowserView(QtWidgets.QWidget):
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.workarea_browser = notgun.ui.workareas.view.WorkareasView()
-        self.project_browser = notgun.ui.projects.view.ProjectsView()
-
-        self.splitter = QtWidgets.QSplitter(QtCore.Qt.Orientation.Horizontal)
-        self.splitter.addWidget(self.project_browser)
-        self.splitter.addWidget(self.workarea_browser)
-
-        self.splitter.setStretchFactor(0, 1)
-        self.splitter.setStretchFactor(1, 2)
+        self.file_manager_view = notgun.ui.file_manager.view.FileManagerView()
 
         layout = QtWidgets.QVBoxLayout(self)
-        layout.addWidget(self.splitter)
+        layout.addWidget(self.file_manager_view)
         self.setLayout(layout)
 
     def setProjectsModel(self, model: QtCore.QAbstractItemModel) -> None:
-        self.project_browser.setModel(model)
+        self.file_manager_view.setProjectsModel(model)
 
     def setWorkareasModel(self, model: QtCore.QAbstractItemModel) -> None:
-        self.workarea_browser.setModel(model)
+        self.file_manager_view.setWorkareasModel(model)
 
 
 class DesktopView(QtWidgets.QWidget):
@@ -46,11 +37,8 @@ class DesktopView(QtWidgets.QWidget):
         layout.addWidget(self.tabs)
         self.setLayout(layout)
 
-    def getWorkareaView(self) -> notgun.ui.workareas.view.WorkareasView:
-        return self.project_browser.workarea_browser
-
-    def getProjectView(self) -> notgun.ui.projects.view.ProjectsView:
-        return self.project_browser.project_browser
+    def getFileManagerView(self) -> notgun.ui.file_manager.view.FileManagerView:
+        return self.project_browser.file_manager_view
 
     def getLoggerView(self) -> notgun.ui.logger.view.LogView:
         return self.logger_view

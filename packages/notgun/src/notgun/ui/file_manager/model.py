@@ -132,8 +132,10 @@ class WorkareaModel(notgun.ui.deferred_item_model.DeferredItemModel):
 
     def setWorkarea(self, workarea: notgun.workareas.WorkArea):
         self.clear()
-        item = WorkareaModelItem(workarea)
-        self.appendRow(item)
+        for child_workarea in workarea.workareas():
+            self.appendRow(WorkareaModelItem(child_workarea))
+        for group in workarea.workfile_groups():
+            self.appendRow(WorkareaModelItem(group))
 
     def onRowsInserted(self, parent: QtCore.QModelIndex, first: int, last: int) -> None:
         for row in range(first, last + 1):
@@ -156,7 +158,7 @@ class WorkareaPathModelItem(QtGui.QStandardItem):
 
 class SpacerPickerItem(QtGui.QStandardItem):
     def __init__(self, workarea: notgun.workareas.WorkArea):
-        super().__init__(">")
+        super().__init__("/")
         self.setData(workarea, ModelRole.Data)
         self.setData(PathItemType.Spacer, ModelRole.Type)
         self.setEditable(False)
@@ -175,11 +177,10 @@ class WorkareaPathModel(QtGui.QStandardItemModel):
             current = current.parent
 
         for workarea in reversed(path):
-            item = WorkareaPathModelItem(workarea)
-            self.appendRow(item)
-
             spacer_item = SpacerPickerItem(workarea)
             self.appendRow(spacer_item)
+            item = WorkareaPathModelItem(workarea)
+            self.appendRow(item)
 
 
 class ProjectsModel(QtGui.QStandardItemModel):
