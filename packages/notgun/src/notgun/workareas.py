@@ -1,9 +1,19 @@
 from __future__ import annotations
+import json
+import os
 import typing
 import threading
 import dataclasses
 
 import notgun.schema
+
+if typing.TYPE_CHECKING:
+    import notgun.projects
+
+
+class WorkareaMetadata(typing.NamedTuple):
+    name: str
+    image_path: str | None
 
 
 class WorkArea:
@@ -13,6 +23,7 @@ class WorkArea:
         name: str,
         path: str,
         fields: dict[str, int | str],
+        project: "notgun.projects.Project",
         parent: "WorkArea|None" = None,
     ):
         self._schema = schema
@@ -20,9 +31,11 @@ class WorkArea:
         self._path = path
         self._fields = fields
         self._parent = parent
-        self._workareas: list[WorkArea] | None = None
-        self._workfile_groups: list[WorkfileGroup] | None = None
+        self._workareas: tuple[WorkArea, ...] | None = None
+        self._workfile_groups: tuple[WorkfileGroup, ...] | None = None
         self._lock = threading.Lock()
+        self._project = project
+        self._metadata: WorkareaMetadata | None = None
 
     @property
     def schema(self) -> notgun.schema.WorkareaSchema:
@@ -30,7 +43,7 @@ class WorkArea:
 
     @property
     def name(self) -> str:
-        return self._name
+        return self.metadata().name
 
     @property
     def path(self) -> str:
@@ -44,13 +57,32 @@ class WorkArea:
     def parent(self) -> "WorkArea|None":
         return self._parent
 
-    def workareas(self) -> tuple[WorkArea]:
+    @property
+    def project(self) -> "notgun.projects.Project":
+        return self._project
+
+    def metadata(self) -> WorkareaMetadata:
+        if self._metadata is None:
+            path = os.path.join(self.path, ".metadata", "metadata.json")
+            if os.path.exists(path):
+                with open(path, encoding="utf-8") as fh:
+                    data = json.load(fh)
+                    self._metadata = WorkareaMetadata(
+                        name=data.get("name", self._name),
+                        image_path=data.get("image_path"),
+                    )
+            else:
+                self._metadata = WorkareaMetadata(name=self._name, image_path=None)
+        return self._metadata
+
+    def workareas(self) -> tuple[WorkArea, ...]:
         with self._lock:
             if self._workareas is None:
-                self._workareas = tuple(iter_workareas(self))
+                self._workareas = tuple(iter_workareas(self.project, self))
+
             return self._workareas
 
-    def workfile_groups(self) -> tuple[WorkfileGroup]:
+    def workfile_groups(self) -> tuple[WorkfileGroup, ...]:
         with self._lock:
             if self._workfile_groups is None:
                 self._workfile_groups = tuple(iter_workfile_groups(self))
@@ -92,19 +124,23 @@ class Workfile:
 class WorkfileGroup:
     name: str
     filetype: str
+    parent: WorkArea
     workfiles: list[Workfile] = dataclasses.field(default_factory=list)
-    parent: WorkArea | None = None
+
+    def latest_workfile(self) -> Workfile:
+        return max(self.workfiles, key=lambda wf: wf.version())
 
 
 def workarea_from_path(
     path: str,
     root_type: notgun.schema.WorkareaSchema,
+    project: "notgun.projects.Project",
     parent: WorkArea | None = None,
 ):
     # if its a full match then we've found the location.
     if fields := root_type.template.fullmatch(path):
         name = fields[root_type.identity_token]  # type: ignore
-        return WorkArea(root_type, name, path, fields, parent)
+        return WorkArea(root_type, name, path, fields, project, parent)
 
     partial_match = root_type.template.match(path)
     if not isinstance(partial_match, dict):
@@ -115,14 +151,19 @@ def workarea_from_path(
         partial_match.get(root_type.identity_token, root_type.label),
         root_type.template.format(partial_match),
         partial_match,
+        project,
+        parent,
     )
 
     for child_type in root_type.workareas:
-        if child := workarea_from_path(path, child_type, parent):
+        if child := workarea_from_path(path, child_type, project, parent):
             return child
 
 
-def iter_workareas(parent_workarea: WorkArea) -> typing.Iterator[WorkArea]:
+def iter_workareas(
+    project: "notgun.projects.Project",
+    parent_workarea: WorkArea,
+) -> typing.Iterator[WorkArea]:
     for child in parent_workarea.schema.workareas:
         if child.identity_token is None:
             path = child.template.format(parent_workarea.fields)
@@ -131,7 +172,7 @@ def iter_workareas(parent_workarea: WorkArea) -> typing.Iterator[WorkArea]:
                 continue
 
             name = child.label
-            yield WorkArea(child, name, path, resolved_fields, parent=parent_workarea)
+            yield WorkArea(child, name, path, resolved_fields, project, parent_workarea)
         else:
             child_fields = parent_workarea.fields.copy()
             child_fields[child.identity_token] = "*"
@@ -145,7 +186,7 @@ def iter_workareas(parent_workarea: WorkArea) -> typing.Iterator[WorkArea]:
                 name = resolved_fields[child.identity_token]
 
                 yield WorkArea(
-                    child, name, path, resolved_fields, parent=parent_workarea
+                    child, name, path, resolved_fields, project, parent=parent_workarea
                 )
 
 
@@ -169,7 +210,7 @@ def iter_workfile_groups(parent_workarea: WorkArea) -> typing.Iterator[WorkfileG
             ext = path_fields["extension"]
             key = (name, ext)
             if key not in memo:
-                memo[key] = WorkfileGroup(name, ext, parent=parent_workarea)
+                memo[key] = WorkfileGroup(name, ext, parent_workarea)
 
             group = memo[key]
             group.workfiles.append(Workfile(workfile_schema, path, path_fields, group))

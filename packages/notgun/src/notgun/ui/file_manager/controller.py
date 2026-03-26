@@ -1,0 +1,224 @@
+from __future__ import annotations
+import os
+import typing
+
+from qtpy import QtCore, QtWidgets, QtGui
+
+import notgun.workareas
+import notgun.projects
+import notgun.ui.file_manager.view
+import notgun.ui.file_manager.model
+
+import notgun
+
+
+class FileManagerController(QtCore.QObject):
+    def __init__(
+        self,
+        view: notgun.ui.file_manager.view.FileManagerView | None = None,
+        workfile_action_handler: WorkareaActionHandler | None = None,
+    ):
+        super().__init__()
+        self.path_model = notgun.ui.file_manager.model.WorkareaPathModel()
+        self.projects_model = notgun.ui.file_manager.model.ProjectsModel()
+        self.workarea_model = notgun.ui.file_manager.model.WorkareaModel()
+
+        self.action_handler = workfile_action_handler or WorkareaActionHandler()
+
+        self.view = view or notgun.ui.file_manager.view.FileManagerView()
+        self._applyStylesheet()
+        self.view.setPathModel(self.path_model)
+        self.view.setProjectsModel(self.projects_model)
+        self.view.setWorkareaModel(self.workarea_model)
+
+        self.view.projectItemClicked.connect(self.onProjectItemClicked)
+        self.view.workareaItemActivated.connect(self.onWorkareaItemActivated)
+        self.view.workareaItemRightClicked.connect(self.onWorkareaItemRightClicked)
+        self.view.pathItemClicked.connect(self.onPathItemClicked)
+        goto_parent_action = QtGui.QAction("Go to Parent", self.view)  # type: ignore[attr-defined]
+        goto_parent_action.setShortcut(QtGui.QKeySequence("Backspace"))
+        self.view.addAction(goto_parent_action)
+
+    def _applyStylesheet(self):
+        stylesheet_path = os.path.join(
+            os.path.dirname(__file__),
+            "stylesheet.qss",
+        )
+        if not os.path.exists(stylesheet_path):
+            return
+        with open(stylesheet_path, encoding="utf-8") as fh:
+            self.view.setStyleSheet(fh.read())
+
+    def setProjectsDir(self, projects_dir: str):
+        self.projects_model.populate(projects_dir)
+
+    def onProjectItemClicked(self, index: QtCore.QModelIndex):
+        project: notgun.projects.Project = index.data(QtCore.Qt.ItemDataRole.UserRole)
+        self.setWorkarea(project.workarea())
+
+    def setWorkarea(self, workarea: notgun.workareas.WorkArea):
+        self.workarea_model.setWorkarea(workarea)
+        self.path_model.setWorkarea(workarea)
+
+        item = self.workarea_model.itemById(workarea.path)
+        if not item:
+            return
+        index = self.workarea_model.indexFromItem(item)
+        self.view.setWorkareaRootIndex(index)
+
+    def onWorkareaItemActivated(self, index: QtCore.QModelIndex):
+        workarea = index.data(notgun.ui.file_manager.model.ModelRole.Data)
+
+        if isinstance(workarea, notgun.workareas.WorkArea):
+            item = self.workarea_model.itemById(workarea.path)
+            if not item:
+                return
+
+            index = self.workarea_model.indexFromItem(item)
+            self.view.setWorkareaRootIndex(index)
+            self.path_model.setWorkarea(workarea)
+        elif isinstance(workarea, notgun.workareas.WorkfileGroup):
+            self.action_handler.onWorkfileGroupActivated(workarea)
+
+    def onWorkareaItemRightClicked(self, index: QtCore.QModelIndex, pos: QtCore.QPoint):
+        backing_item = index.data(notgun.ui.file_manager.model.ModelRole.Data)
+        self.action_handler.onContextMenuRequested(backing_item, pos)
+
+    def onPathItemClicked(self, index: QtCore.QModelIndex):
+        item_type = index.data(notgun.ui.file_manager.model.ModelRole.Type)
+        if item_type == notgun.ui.file_manager.model.PathItemType.Spacer:
+            self.onWorkareaSwitchMenuRequested(index)
+            return
+
+        workarea: notgun.workareas.WorkArea = index.data(
+            notgun.ui.file_manager.model.ModelRole.Data
+        )
+
+        if isinstance(workarea, notgun.workareas.WorkArea):
+            self.setWorkarea(workarea)
+
+    def onWorkareaSwitchMenuRequested(self, index: QtCore.QModelIndex):
+        workarea = index.data(notgun.ui.file_manager.model.ModelRole.Data)
+        if not isinstance(workarea, notgun.workareas.WorkArea):
+            return
+
+        parent = workarea.parent
+        if not isinstance(parent, notgun.workareas.WorkArea):
+            return
+
+        siblings = parent.workareas()
+        if not siblings:
+            return
+
+        menu = QtWidgets.QMenu(self.view)
+        for sibling in siblings:
+            action = menu.addAction(sibling.name)
+            action.setData(sibling)
+
+            if sibling.path == workarea.path:
+                font = action.font()
+                font.setBold(True)
+                action.setFont(font)
+
+        item_rect = self.view.path_view.visualRect(index)
+        popup_pos = self.view.path_view.viewport().mapToGlobal(item_rect.bottomLeft())
+        selected_action = menu.exec(popup_pos)
+        if selected_action is None:
+            return
+
+        selected_workarea = selected_action.data()
+        if isinstance(selected_workarea, notgun.workareas.WorkArea):
+            self.setWorkarea(selected_workarea)
+
+
+ObjectType = typing.Union[
+    notgun.workareas.WorkArea,
+    notgun.workareas.WorkfileGroup,
+    None,
+]
+
+
+class WorkareaActionHandler(QtCore.QObject):
+    requestOpenWorkfile = QtCore.Signal(notgun.workareas.Workfile)  # type: ignore
+    requestNewWorkfile = QtCore.Signal(notgun.workareas.WorkArea, str)  # type: ignore
+
+    def onWorkfileGroupActivated(self, workfile_group: notgun.workareas.WorkfileGroup):
+        pass
+
+    def onContextMenuRequested(self, obj: ObjectType, pos: QtCore.QPoint):
+        menu = QtWidgets.QMenu()
+        style = menu.style()
+        open_icon = style.standardIcon(style.StandardPixmap.SP_MediaPlay)  # type: ignore[attr-defined]
+        folder_icon = style.standardIcon(style.StandardPixmap.SP_DialogOpenButton)  # type: ignore[attr-defined]
+
+        # get new icon from theme, fallback to standard icon if not found
+        new_icon = QtGui.QIcon.fromTheme("document-new")
+        if new_icon.isNull():
+            new_icon = style.standardIcon(style.StandardPixmap.SP_FileDialogNewFolder)  # type: ignore[attr-defined]
+
+        if isinstance(obj, notgun.workareas.WorkArea):
+            open_dir_action = menu.addAction("Open Directory")
+            open_dir_action.setIcon(folder_icon)
+
+            open_dir_action.setData(obj.path)
+            open_dir_action.triggered.connect(self.onOpenPathActionTriggered)
+
+            if obj.schema.workfiles:
+                sub_menu = menu.addMenu("Create New")
+                sub_menu.setIcon(new_icon)
+                for workfile_type in obj.schema.workfiles:
+                    action = sub_menu.addAction(workfile_type)
+                    action.setData((obj, workfile_type))
+                    action.triggered.connect(self.onNewWorkfileActionTriggered)
+
+        elif isinstance(obj, notgun.workareas.WorkfileGroup):
+            for workfile in reversed(obj.workfiles):
+                action = menu.addAction(os.path.basename(workfile.path))
+                action.setIcon(open_icon)
+                action.setData(workfile)
+
+        menu.exec(pos)
+
+    def onOpenPathActionTriggered(self):
+        action: QtWidgets.QAction = self.sender()  # type: ignore
+        if not isinstance(action, QtWidgets.QAction):  # type: ignore
+            return
+
+        path = action.data()
+        if not isinstance(path, str):
+            return
+
+        QtGui.QDesktopServices.openUrl(QtCore.QUrl.fromLocalFile(path))
+
+    def onOpenWorkfileActionTriggered(self):
+        action: QtWidgets.QAction = self.sender()  # type: ignore
+        if not isinstance(action, QtWidgets.QAction):  # type: ignore
+            return
+
+        workfile = action.data()
+        if not isinstance(workfile, notgun.workareas.Workfile):
+            return
+
+        self.requestOpenWorkfile.emit(workfile)
+
+    def onNewWorkfileActionTriggered(self):
+        action: QtWidgets.QAction = self.sender()  # type: ignore
+        if not isinstance(action, QtWidgets.QAction):  # type: ignore
+            return
+
+        workarea, workfile_type = action.data()
+        if not isinstance(workarea, notgun.workareas.WorkArea):
+            return
+
+        self.requestNewWorkfile.emit(workarea, workfile_type)
+
+
+if __name__ == "__main__":
+    import sys
+
+    app = QtWidgets.QApplication(sys.argv)
+    # apply_dark_palette(app)
+    controller = FileManagerController()
+    controller.setProjectsDir("/home/user/Development/notgun/example")
+    controller.view.show()
+    sys.exit(app.exec())

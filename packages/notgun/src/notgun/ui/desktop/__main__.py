@@ -20,7 +20,7 @@ def main(args):
     logging.basicConfig()
 
     app = QtWidgets.QApplication()
-    print("app start")
+    # print("app start")
 
     # if args.projects_dir is None:
     #     projects_dir = QtWidgets.QFileDialog.getExistingDirectory(
@@ -33,10 +33,12 @@ def main(args):
     # else:
     #     projects_dir = args.projects_dir
 
-    controller = notgun.ui.desktop.controller.DesktopController("/mnt/projects")
+    controller = notgun.ui.desktop.controller.DesktopController("/home/user/Development/notgun/example")
     app.aboutToQuit.connect(controller.shutdown)
     controller.view.show()
     controller.populate()
+
+
 
     return app.exec()
 

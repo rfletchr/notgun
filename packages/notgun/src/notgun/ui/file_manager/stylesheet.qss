@@ -1,0 +1,67 @@
+QListView#workarea_icons_view {
+	background-color: palette(base);
+	border: 1px solid transparent;
+	padding: 6px;
+	background: qlineargradient(
+        x1: 0, y1: 0,
+        x2: 0, y2: 1,
+        stop: 0   palette(alternate-base),
+        stop: 0.4 palette(alternate-base),
+        stop: 1   palette(base)
+    );
+}
+
+QListView#project_items_view {
+	background-color: palette(base);
+	border: 1px solid transparent;
+	padding: 6px;
+	background: qlineargradient(
+        x1: 0, y1: 0,
+        x2: 0, y2: 1,
+        stop: 0   palette(alternate-base),
+        stop: 0.4 palette(alternate-base),
+        stop: 1   palette(base)
+    );
+
+}
+
+
+QListView#project_items_view::item {
+	border-left: 4px solid transparent;
+
+	background: palette(mid);
+    color: palette(text);
+}
+
+
+QListView#project_items_view::item:hover {
+	border-left: 4px solid palette(accent);
+    color: palette(text);
+}
+
+QListView#project_items_view::item:selected {
+	border-left: 4px solid orange;
+    color: palette(text);
+}
+
+QListView#workarea_icons_view::item:hover {
+	background-color: palette(alternate-base);
+
+}
+
+QListView#workarea_icons_view::item {
+    border: 1px solid transparent;
+	
+}
+
+QListView#workarea_icons_view::item:selected {
+    color: palette(text)
+}
+
+
+QListView#path_view::item:hover {
+	background-color: palette(alternate-base);
+}
+QListView#path_view::item:selected {
+	background-color: palette(alternate-base);
+}

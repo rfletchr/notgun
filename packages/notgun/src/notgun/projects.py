@@ -2,13 +2,18 @@ from notgun.launcher import Program
 import json
 import os
 import typing
+import logging
+
+import notgun.schema
 import notgun.templates
 import notgun.adapters
 import notgun.workareas
+import notgun.bootstrap
 
 if typing.TYPE_CHECKING:
     import notgun.launcher
 
+logger = logging.getLogger(__name__)
 
 __CURRENT_PIPELINE: "Project|None" = None
 
@@ -29,14 +34,19 @@ class Project:
         project_name: str,
         templates: notgun.templates.PathTemplateDict,
         programs: dict[str, "notgun.launcher.Program"],
-        root_workarea: notgun.workareas.WorkArea,
+        root_schema: notgun.schema.WorkareaSchema,
     ):
         self._templates = templates.copy()
         self._name = project_name
         self._root = projects_root
         self._programs = dict[str, Program](programs)
         self._app_adpater: notgun.adapters.ApplicationAdapter | None = None
-        self._root_workarea: notgun.workareas.WorkArea = root_workarea
+        self._root_schema = root_schema
+        self._root_workarea = notgun.workareas.workarea_from_path(
+            os.path.join(self._root, self._name),
+            root_schema,
+            self,
+        )
         self._metadata_cache: dict | None = None
 
     def name(self):
@@ -92,3 +102,26 @@ class Project:
 
     def workarea_from_path(self, path: str):
         return notgun.workareas.workarea_from_path(path, self._root_workarea.schema)
+
+
+def iter_projects(projects_dir: str) -> typing.Iterator[Project]:
+    for name in sorted(os.listdir(projects_dir)):
+        if os.path.isfile(os.path.join(projects_dir, name)):
+            continue
+
+        path = os.path.join(projects_dir, name)
+
+        if os.access(path, os.X_OK):
+            if not os.path.isdir(path):
+                continue
+
+            if not notgun.bootstrap.has_bootstrap(projects_dir, name):
+                continue
+
+            data = notgun.bootstrap.BootstrapData(projects_dir, name)
+            try:
+                project = notgun.bootstrap.init(data)
+                yield project
+            except Exception:
+                logger.exception(f"Failed to initialize project {name}")
+                continue

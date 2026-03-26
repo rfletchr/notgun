@@ -85,7 +85,7 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
         identity_token="app",
     )
     shot_workarea_schema.add_workfile(
-        "nuke",
+        "Nuke Script",
         templates["shot_workfile"],
         programs["nuke"],
         "{shot}_{task}",
@@ -94,18 +94,10 @@ def bootstrap(data: notgun.bootstrap.BootstrapData) -> notgun.projects.Project:
 
     project_schema.add_child("Assets", templates["assets"])
 
-    fields: dict[str, str | int] = {"project": data.project_name}
-    root_workarea = notgun.workareas.WorkArea(
-        project_schema,
-        data.project_name,
-        templates["project"].format(fields),
-        fields,
-    )
-
     return notgun.projects.Project(
         data.projects_dir,
         data.project_name,
         templates,
         programs,
-        root_workarea,
+        project_schema,
     )
