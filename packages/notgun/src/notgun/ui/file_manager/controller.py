@@ -239,19 +239,22 @@ class WorkareaActionHandler(QtCore.QObject):
                     action.setIcon(icon)
                     action.triggered.connect(self.onNewWorkfileActionTriggered)
 
-                open_menu = menu.addMenu("Open")
-                open_menu.setIcon(self.open_icon)
-                for workfile_group in obj.workfile_groups():
-                    ext = workfile_group.schema.extension
-                    group_icon = self.icon_provider.forExtension(ext)
+                if groups := obj.workfile_groups():
+                    open_menu = menu.addMenu("Workfiles")
+                    open_menu.setIcon(self.open_icon)
+                    for workfile_group in groups:
+                        ext = workfile_group.schema.extension
+                        group_icon = self.icon_provider.forExtension(ext)
 
-                    group_menu = open_menu.addMenu(workfile_group.name)
-                    group_menu.setIcon(group_icon)
-                    for workfile in reversed(workfile_group.workfiles):
-                        action = group_menu.addAction(os.path.basename(workfile.path))
-                        action.setIcon(group_icon)
-                        action.setData(workfile)
-                        action.triggered.connect(self.onOpenWorkfileActionTriggered)
+                        group_menu = open_menu.addMenu(workfile_group.name)
+                        group_menu.setIcon(group_icon)
+                        for workfile in reversed(workfile_group.workfiles):
+                            action = group_menu.addAction(
+                                os.path.basename(workfile.path)
+                            )
+                            action.setIcon(group_icon)
+                            action.setData(workfile)
+                            action.triggered.connect(self.onOpenWorkfileActionTriggered)
 
         elif isinstance(obj, notgun.workareas.WorkfileGroup):
             open_action = menu.addAction("Open")
